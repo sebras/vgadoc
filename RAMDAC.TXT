@@ -1,0 +1,219 @@
+RAMDACs
+
+Brooktree:
+Bt476        6-bit DAC.
+Bt478        8-bit DAC.
+
+Sierra  "Mark1":  
+SC11481      15-bit.    6-bit DAC.   Overlay. Only "Tseng" double edge mode.  
+SC11486      15-bit.    6-bit DAC.            Only "Tseng" double egde mode.
+SC11488      15 bit.    6/8 bit DAC. Overlay. Only "Tseng" double edge mode.
+
+Sierra  "Mark2":
+SC11482      15-bit.    6-bit DAC.   Overlay.
+SC11483      15-bit.    6-bit DAC.
+SC11484      15-bit.    6/8 bit DAC. Overlay.
+
+Sierra  "Mark3":
+SC11485      15/16 bit. 6-bit DAC.   Overlay.
+SC11487      15/16 bit. 6-bit DAC. 
+SC11489      15/16 bit. 6/8 bit DAC. Overlay.
+
+SC15025      15/16/24 bit.
+SC15026      15/16/24 bit.
+
+AcuMos:
+ADAC1        15/16/24 bit.
+
+AT&T:
+ATT20C492    15/16/24 bit 
+ATT20C491    15/16/24 bit. 
+
+
+MUSIC:
+MU9C4870     15-bit 
+
+
+Diamond:
+SS2410       15/24 bit.     Might be the same as the MUSIC. A test program for
+			    Diamond Stealth ID's it as 'MUSIC', but then they
+			    probably got the test from Tseng in the first place.
+
+Avance Logic:
+ALG1101      16-bit.        Appears to be different from the other HiColor DACs.
+
+ATI:
+ATI68830     15/16/24bit    Up to 80 MHz    !
+ATI68875     15/16/24bit    Up to 135 MHz   ! Used in ATI Graphics Ultra + and Pro
+
+
+
+15-bit modes have 5 bits of each basic color:
+bit  0- 4 blue.
+     5- 9 green.
+    10-14 red.
+The pixel is stored in two bytes in Intel style (little endian).
+
+16-bit modes have 5 bits of red and blue, and 6 bits of green:
+bits 0- 4  blue.
+     5-10  green.
+    11-15  red.
+The pixel is stored in two bytes in Intel style (little endian).
+
+24-bit modes have 8 bits of each basic color:
+bits 0- 7  blue.
+     8-15  green
+    16=23  red.
+The pixel is stored in three bytes in Intel style (little endian).
+
+
+
+
+HiColor DACs have a command register at 3C6h:
+
+bit 7  Set in HiColor modes.
+    
+    6  Set in 16-bit modes. Clear in 15-bit modes.
+       Appear to exist but have no effect in SC11483s.
+       (ATT) Set in 16 and 24 bit modes, clear in 15 bit modes.
+
+    5  (Sierra "Mark 2/3")
+       If set two pixel clocks are used to latch the two bytes
+       needed for each pixel. Low byte is latched first.
+       If clear the low byte is latched on the rising edge of the
+       pixel clock and the high byte is latched on the falling edge.
+       Only some VGA chips (Tseng 4000) can handle this.
+       In SC11486 this bit has no effect.
+    
+
+    5  (ATT) Set in 15 and 24 bit modes. clear in 16bit modes.
+  
+
+
+
+
+
+Forcing HiColor DACs into command mode:
+
+procedure dactocomm;   {switches DAC to command register}
+var x:word;
+begin
+  x:=inp($3C8);    {clear old state}
+  x:=inp($3C6);
+  x:=inp($3C6);
+  x:=inp($3C6);    {Read $3C6 4 times.}
+  x:=inp($3C6);
+end;
+
+Now reads and writes to $3C6 will access the command register.
+Any access to $3C7-$3C9 will switch back to the PEL mask register.
+
+
+Forcing HiColor DACs into normal bode:
+
+procedure dactopel;  {switches DAC back to normal mode}
+var x:word;
+begin
+  x:=inp($3C8);
+end;
+
+
+
+function testdac:string;
+var
+  x,y,z,v,oldcommreg,oldpelreg:word;
+
+begin
+  IF chip=__al2101 then    (* Special case -- weird DAC *)
+  begin
+    dactype:=_dac16;
+    testdac:='AVL DAC 16';
+    exit;
+  end;
+  testdac:='Normal';
+  dactype:=_dac8;
+  dactopel;
+  x:=inp($3c6);
+  repeat
+    y:=x;
+    x:=inp($3c6);
+  until (x=y);
+  z:=x;
+  x:=inp($3c8);
+  x:=inp($3c6);
+  x:=inp($3c6);     {Same as DacToComm, but keep last value read}
+  x:=inp($3c6);    
+  x:=inp($3c6); 
+  y:=8;
+  while (x<>$8E) and (y>0) do
+  begin
+    x:=inp($3c6);
+    dec(y);
+  end;
+  if x=$8e then                 {Special tests for SS2410 DAC}
+  begin
+    dactype:=_dacss24;
+    testdac:='SS24';
+    dactopel;              {bavk to PE mode}
+  end
+  else begin
+    dactocomm;
+    oldcommreg:=inp($3c6);
+    dactopel;
+    oldpelreg:=inp($3c6);
+    x:=oldcommreg xor 255;
+    outp($3c6,x);
+    dactocomm;
+    v:=inp($3c6);
+    if v<>x then
+    begin
+      dactocomm;
+      x:=oldcommreg xor $60;
+      outp($3c6,x);
+      dactocomm;
+      v:=inp($3c6);
+      testdac:='Sierra SC11486';
+      dactype:=_dac15;
+
+      if (x and $e0)=(v and $e0) then
+      begin
+	x:=inp($3c6);
+	dactopel;
+	testdac:='Sierra 32k/64k';
+	dactype:=_dac15;             (* Can't tell the difference *)
+
+	if x=inp($3c6) then
+	begin
+	  testdac:='ATT 20c492';       {or ATT20c491}
+	  dactype:=_dacatt492;
+	  dactocomm;
+	  outp($3c6,255);
+	  dactocomm;
+	  if inp($3c6)<>255 then
+	  begin
+	    testdac:='AcuMos ADAC1';   {I this correct??}
+	    dactype:=_weirdDAC;
+	  end;
+	end;
+      end;
+
+      dactocomm;
+      outp($3c6,oldcommreg);      {restore command register}
+    end;
+    dactopel;
+    outp($3c6,oldpelreg);         {restore PEL register}
+  end;
+end;
+
+This rutine identifies:
+  
+
+Sierra "Mark1"   as Sierra 32K
+
+Sierra "Mark2"   is misidentified as Sierra 64k (Mark3).
+
+Sierra "Mark3"   as Sierra 64k.
+
+ATT20C491/492    as ATT
+
+SS2410           as SS24        

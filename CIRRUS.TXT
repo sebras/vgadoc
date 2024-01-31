@@ -3,12 +3,17 @@
     CL-GD 510/520
     CL-GD 610/620
 
+    CL-GD 5422        Upto 1MB, 1024x768x256.     Very different from 5/6xx series
+		      This is sometimes called AVGA3 any relation to AcuMos ??
+   
+
+
 
   3C4h index  6  (W):
   bit 0-7  Writing ("Eagle ID" rol 4) will disable extensions.
-           "Eagle ID" will enable.
-           Reading will return 0 if last write was to disable,
-           1 if it was to enable
+	   "Eagle ID" will enable.
+	   Reading will return 0 if last write was to disable,
+	   1 if it was to enable
 
   3C4h index 80h (R/W): Miscellaneous Control 1
 
@@ -111,12 +116,91 @@
   3C4h index C0h..FFh (R/W): Reserved
 
   3d4h index  Ch (R/W): Screen A start address Hi
-  Must be cleared before the Eagle ID Register (3d4h indec 1Fh) can be read.
+  Must be cleared before the Eagle ID Register (3d4h index 1Fh) can be read.
 
   3d4h index 1Fh (R):  Eagle ID register
   bit 0-7  Eagle ID.  Used for test of 3C4h index 6.
-           ECh for CL-GD 510/520, CAh for 610/620. EAh for Video7 boards.
+	   ECh for CL-GD 510/520, CAh for 610/620. EAh for Video7 boards.
 
+
+
+GD5422 series:
+  
+  3C4h index  6  (R/W)
+  bit 0-7  Writing 12h to this register seems to enable extensions.
+	   Unlike earlier Cirrus Chips the value can be read from the register.
+
+  3C4h index  7  (R/W): 
+  bit 0-2  Memory mode. 1=256 colors, 3=15/16 bit RGB, 5=24bit RGB
+
+  3C4h index  8  (R/W):
+
+  3C4h index  9  (R/W):
+  bit 2-4  Monitor type. 0=Std VGA
+
+  3C4h index 0Ah (R/W):
+
+  3C4h index 0Bh (R/W):
+
+  3C4h index 0Ch (R/W):
+
+  3C4h index 0Dh (R/W):
+
+  3C4h index 0Eh (R/W):
+
+  3C4h index 0Fh (R/W):
+  bit 3-4  Video memory. 0=256K, 1=512K, 2=1MB.
+	5  Set if 256 or more colors ?
+
+  3C4h index 10h (R/W):
+
+  3C4h index 11h (R/W):
+
+  3C4h index 12h (R/W):
+
+  3C4h index 13h (R/W):
+
+  3C4h index 18h (R/W):
+
+  3C4h index 19h (R/W):
+
+  3C4h index 1Ah (R/W):
+
+  3C4h index 1Bh (R/W):
+
+  3C4h index 1Ch (R/W):
+
+  3C4h index 1Dh (R/W):
+
+  3C4h index 1Eh (R/W):
+
+  3CEh index 09h (R/W):
+  bit 0-7  4K Primary bank number.
+
+  3CEh index 0Ah (R/W):
+  bit 0-7  4K bank number  (How do you enable this second bank register,
+			    and how does it work ?).
+
+  3CEh index 0Bh (R/W):
+
+  3CEh index 10h (R/W):
+
+  3CEh index 11h (R/W):
+
+  3CEh index 12h (R/W):
+
+  3d4h index 19h (R/W):
+
+  3d4h index 1Ah (R/W):
+  bit   0  Set if an interlaced mode.
+
+  3d4h index 1Bh (R/W):
+  bit   0  Display Start Address bit 16. Bit 0-15 are in 3d4h index Ch-Dh.
+	2  Display Start Address bit 17
+	4  Bit 8 of the CRTC Offset register (3d4h index 13h) ?.
+
+  3d4h index 27h (R):  Chip ID
+  bit 0-7  8Ah (type2), 8Ch-8Fh (type3), 90h-93h (type5) or 94h-97h (type4).
 
   Memory locations:
 
@@ -126,18 +210,21 @@
 
   ID Cirrus VGA:
 
-  port[$3d4]:=12;
-  old:=port[$3D5];
-  port[$3d5]:=0;
-  port[$3d4]:=$1f;
-  eagle:=port[$3d5];
-  outw[$3c4]:=((eagle shl 4)+(eagle shr 4)) shl 8+6;
-  if port[$3c5]=0 then
+  old:=rdinx(base,12);
+  outp(base+1,0);
+  eagle:=rdinx(base,$1f);
+  wrinx($3c4,6,(eagle shl 4)+(eagle shr 4));
+  if inp($3c5)=0 then
   begin
-    port[$3c5]:=eagle;
-    if port[$3c5]=1 then CIRRUS
+    outp($3c5,eagle);
+    if inp($3c5)=1 then
+      case eagle of
+	$EC:Cirrus 510/520;
+	$CA:Cirrus 610/620;
+	$EA:Cirrus Video7 OEM;
+      end;
   end;
-  portw[$3d4]:=old shl 8+12;
+  wrinx(base,12,old);
 
 
   Video Modes:
@@ -170,3 +257,25 @@
 
   Mode 50h and 51h use a special system where four pixels are stored at the
   same byte address in plane 0,1,2 and 3 respectively.
+
+
+  Modes for the GD 5422:
+
+  14h T  132   25  16 (8x16)
+  54h T  132   43  16 (8x8)
+  55h T  132   25  16 (8x14)
+  58h G  800  600  16 planar
+  5Ch G  800  600 256 packed
+  5Dh G 1024  768  16 planar
+  5Fh G  640  480 256 packed
+  60h G 1024  768 256 packed
+  64h G  640  480 64K Sierra 16bit
+  65h G  800  600 64K Sierra 16bit
+  66h G  640  480 32K Sierra 15bit
+  67h G  800  600 32K Sierra 15bit
+  6Ah G  800  600  16 planar
+  6Ch G 1280 1024  16 planar
+  6Fh G  320  200 64K Sierra 16bit
+  70h G  320  200 16M RGB
+  71h G  640  480 16M RG
+

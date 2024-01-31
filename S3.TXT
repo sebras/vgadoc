@@ -1,0 +1,91 @@
+  S3  86c911  -  1Mbyte, 1280x1024x16c, 1024x768x256c, 640x480x32kc
+		 Hardwired Bit-Blt and fill functions. 
+
+  S3  86c924  -  Support for 24-bit modes.
+  S3  86c928  -  24bit color, 4MB D/VRAM 
+  S3  86c801  -  similar to '928 ??
+  S3  86c805  -  same as '801 but for Local Bus
+ 
+
+  The S3 chip only works in AT and better units as it uses full
+  16 bit I/O addresses.
+
+  The S3 uses the following I/O addresses:
+     42E8h, 4AE8h, 82E8h, 86E8h, 8AE8h, 8EE8h, 92E8h, 96E8h, 9AE8h, 9EE8h
+
+  Please note that this may conflict with Com4 ports at 2E8h-2EFh !!!
+
+
+  3d4h index 30h (R/W): ID register
+  bit 0-7  Returns 81h or 82h when read.
+
+  3d4h index 31h (R/W): Display Start
+  bit 0,3  Set before writing bank register???
+      4-5  Bit 16-17 of the Display Start Address.
+
+  3d4h index 35h (R/W): Bank number
+  bit 0-3  64k bank number.
+
+  3d4h index 38h (R/W): Extensions Enable
+  bit 0-7  Writing 48h to this register enables the extended registers,
+	   writing 0 disables them.
+
+  3d4h index 39h (R/W): Extensions Enable 2
+  bit 0-7  Write A5h to this register to unlock extensions.
+
+  3d4h index 41h (R/W): Memory
+  bit   4  Set if we have 1MByte, clear if we have 512KBytes.
+
+
+  3d4h index 30h-3Ch and 40h-4Fh are used.
+
+
+  82E8h (16) (R/W): CUR_Y
+  86E8h (16) (R/W): CUR_X
+  8AE8h (16) (R/W): DIAGY_STEP
+  8EE8h (16) (R/W): DIAGX_STEP
+  92E8h (16) (R/W): ERR_TERM
+  96E8h (16) (R/W): MAJ_AXIS/CURWIDTH
+  9AE8h (16) (W): CMD_REG
+  9AE8h (16) (R): GP_STAT
+  bit    8  Set when data is ready from the co-processor.
+
+  A2E8h (16) (R/W): BKGD_COLOR
+  A6E8h (16) (R/W): FRGD_COLOR
+  AAE8h (16) (R/W): WRT_MASK
+  B2E8h (16) (R/W): COLOR_CMP
+  B6E8h (16) (R/W): BKGD_MIX
+  BAE8h (16) (R/W): FRGD_MIX
+  BEE8h (16) (R/W): MULTIFUNC_CNTL
+  E2E8h (16) (R/W): PIX_TRANS
+
+
+  ID S3 chip:
+
+  wrinx(base,$38,0);    {disable extensions}
+  if not testinx2(base,$35,$f) then
+  begin
+    wrinx(base,$38,$48);
+    if testinx2(base,$35,$f) then
+    begin
+      __S3__
+      case rdinx(base,$30) of
+       $81:86c911               {Is this really a version no??}
+       $82:86c911A ??
+      end;
+    end;
+  end;
+ 
+
+  Video Modes (Diamond Stealth):
+       VESA:
+  54h        T  132   43   16
+  55h        T  132   25   16  
+       101h  G  640  480  256  packed  
+  6Ah  102h  G  800  600   16  planar
+       103h  G  800  600  256  packed
+       104h  G 1024  768   16  planar
+       205h  G 1024  768  256  packed
+       206h  G 1280  960   16  planar
+       208h  G 1280 1024   16  planar
+       301h  G  640  480   32k word packed

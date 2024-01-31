@@ -1,0 +1,231 @@
+
+
+                WHATVGA version 1.0   23/jan/93
+
+
+         Copyright 1991,982,93   Finn Th›gersen
+
+
+
+
+
+
+
+Command line switches:
+
+  whatvga [+acumos] [-ncr] [=1024]
+
+  where +chipset  forces WHATVGA to proceed as if this chipset was found.
+                  The test for this chip set will be executed in order
+                  to check for memory and revision.
+                  No other chipsets will be tested.
+
+        -chipset  ensures that the tests for this chipset will NOT be
+                  executed. Useful if a chipset is misidentified
+                  or some earlier test gives problems.
+
+        =kbytes   Forces the number of Kbytes of video RAM on the
+                  adapter to the specified value.
+
+
+
+Whatvga has 6 options in the main menu:
+
+  1 Test standard VGA
+
+    Allows you to test the standard VGA video modes.
+    Draws a test pattern, including a color palette
+    and writes basic information as text on the display.
+
+  2 Test extended modes
+
+    Allows you to test the extended video modes of the adapter.
+    Draws a test pattern, including a color palette
+    and writes basic information as text on the display.
+    On the upper and left edge every hundred pixels is marked.
+
+  3 Scroll test
+
+    Allows you to test the scroll function of the adapter.
+    Draws a test pattern, including a color palette
+    and writes basic information as text on the display.
+    The test pattern is drawn in the largest resolution there
+    is video memory for.
+    With the arrow keys you can move around in the pattern.
+
+  4 Search for video modes
+
+    Steps through the video modes 14h to 7Fh to see which ones
+    are implemented by this adapter.
+    When a video mode is found the rutine attemps to analyse
+    the mode and then draws a test pattern to check the analysis.
+    When the test pattern is displayed you can view the register
+    values by pressing the "d" key, or save them to a file named
+    REGISTER.VGA by pressing the "f" key.
+
+  5 Test VESA modes
+
+    This item is only shown if a VESA driver is found.
+    Draws a test pattern, including a color palette
+    and writes basic information as text on the display.
+
+  9 Exit
+
+
+
+
+
+
+
+Adapters tested:
+
+
+                   Ident:   Memory:   Ext res:   Scroll:
+
+Acumos:
+    AVGA2          OK       Ok        Ok         No *
+    AVGA3
+Ahead:
+    A
+    B
+ATI:
+    18800
+    18800-1
+    28800-2
+    28800-4
+    28800-5
+Avance Logic:
+    AL2101         Ok       Ok        Ok *       Ok *
+Chips&Tech:
+    82c451
+    82c452
+    82c453
+    82c455
+    82c456
+    82c457
+    F65520
+    F65530
+Cirrus:
+    510/520
+    610/620
+    5422           Ok       Ok        Ok         Ok
+Compaq:
+Everex:
+Genoa:
+    5100/5200
+    5300/5400
+    6100
+    6200/6300
+    6400/6600
+    7900
+MXIC:
+    86010          Ok       Ok        Ok
+NCR:
+    77C20
+    77C21
+    77C22E         Ok       Ok        Ok         Ok *
+    77C22E+
+Oak:
+    OTI-37C        Ok       Ok
+    OTI-067        Ok       Ok        Ok
+    OTI-077
+Paradise/Western Digital:
+    PVGA1A         Ok       Ok        Ok         Ok
+    WD90C00
+    WD90C10
+    WD90C11
+    WD90C2x
+    WD90C30        Ok       Ok        Ok         Ok
+    WD90C31
+Primus:
+    P2000          Ok       Ok        Ok         Ok
+Realtek:
+    RT3106         Ok       Ok        *          *
+S3:
+    86c911
+    86c911A
+    86c924         *        Ok        Ok         Ok
+    86c801
+    86c805
+    86c928
+Trident:
+    8800BR
+    8800CS
+    8900
+    8900C
+    9000
+Tseng:
+    ET3000         Ok       Ok        Ok         *
+    ET4000         Ok       Ok        Ok         Ok
+    ET4000W32
+Video7/Headland:
+    HT-208
+    HT-216
+Yamaha:
+    6388
+
+
+Acumos AVGA2:
+
+  Scroll doesn't work.
+
+
+Avance Logic:
+
+  Scroll has problems.
+  Search for modes has problems with the width of scanlines
+  and determining 256 or 64K colors.
+
+
+Cirrus 5422:
+
+  Search for Mode has problems determing the number of bytes in a scanline.
+
+
+NCR:
+
+  Search for modes has problems determining the number of bytes in a scanline
+  in all 256 color modes.
+
+Oak:
+  The 4 color modes (55h and 57h for the 067) currently doesn't work.
+
+Realtek:
+
+  Mode 23h (1024x768 4color) does not work.
+  Scroll has problems with crossing the 512K mark.
+  Search for Mode has problems determing the number of bytes in a scanline
+  VESA modes doesn't work.
+
+
+S3:
+
+  The 86c924 is IDed as an 86c911A.
+  I hear a rumor that they are actually the same ??
+
+
+Tseng 3000:
+
+  The Tseng 3000 seems to enable different amounts of memory for
+  different modes, thus using "larger than physical" displays
+  is rather problematical.
+
+
+Generel Problems:
+
+I can't tell the difference between the Sierra "Mark2" SC11482/3/4
+(15 bits) and the "Mark3" SC11485/7/9 (15/16 bits) RAMDACs.
+
+The Acumos ADAC1 seems to be misidentified as an ATT20c491/2.
+
+With the SS24 DAC I can't tell if we are in an 256, 32768 or 16M color
+mode (Search for modes).
+
+On many cards interlaced modes are identified as app. half their
+actual height by the Search for modes rutine.
+
+Search for modes doesn't understand 2 and 4 color modes.
+
+Some of the extended modes may only be implemented on
+some otherwise similar boards, depending on make and BIOS rev.
+

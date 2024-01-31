@@ -1,0 +1,55 @@
+PRIMUS P2000
+
+P2000     2MB  max 1280x1024/256c, 800x600/32k.
+
+The P2000 is an accelerator card.
+
+
+  3CEh index 13h (R/W):
+  bit   6  If set 3CEh index 21h bit 5 is used as bit 8 of the Display Offset
+	   (3d4h index 13h) and the final display address is devided by 2.
+
+  3CEh index 21h (R/W):
+  bit 0-2  Display start address bit 16-18.  
+	5  Bit 8 of the Display Offset (3d4h index 13h),
+	   if 3CEh index 13h bit 6 is set.
+
+  3CEh index 30h (R/W): 
+  
+  3CEh index 33h (R/W): Width lo byte
+  bit 0-7  low byte of object/area width in pixels.
+
+  3CEh index 34h (R/W): Width hi byte
+  bit 0-7  high byte of object/area width in pixels.
+
+  3CEh index 35h (R/W): Height lo byte
+  bit 0-7  low byte of object/area height in pixels.
+
+  3CEh index 36h (R/W): Height hi byte
+  bit 0-7  high byte of object/area height in pixels.
+      
+  3CEh index 37h (R/W): Start address lo byte
+  bit 0-7  low byte of the pixel address of the object/area
+
+  3CEh index 38h (R/W): Start address mid byte
+  bit 0-7  mid. byte of the pixel address of the object/area 
+ 
+  3CEh index 39h (R/W): Start address hi byte
+  bit 0-7  high byte of the pixel address of the object/area 
+ 
+  3CEh index 3Dh (R/W): Status/Command register
+  bit 0   (R): Set if busy with op.
+
+  bit 0-7 (W): Command.
+		00h = NO op.
+		07h = BitBlt
+		19h = Fill rect
+
+  3CEh index 3Eh (R/W): Fill color
+  bit 0-7  Fill color (rect).
+  
+  3D6h (R/W): Write bank
+  bit 0-7  Write bank no. in 64kb units.
+
+  3D7h (R/W): Read bank
+  bit 0-7  Read bank no. in 64kb units.

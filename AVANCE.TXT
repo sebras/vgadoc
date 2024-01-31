@@ -1,0 +1,87 @@
+Avance Logic AL2101 Graphics Accelerator
+
+The AL2101 is a VGA controller with a built in graphics coprocessor (COP).
+The AL2101 only works in AT and better systems as it uses 16 bit I/O addresses.
+
+AL2101  2Mb, 1280x1024x256c, 800x600x64k
+
+
+  3CEh index  Dh (R/W): Fill Color
+  bit 0-7  Used as fill color by Coprocessor.
+
+  3d4h index 1Eh (R/W): 
+  bit 0-1  Video memory. 0=256k, 1=512k, 2=1M, 3=2Mbytes.
+      6-7  Max Horizontal Frequency:
+	     0=38kHz, 1=48kHz, 2=56kHz, 3=64kHz.
+
+  3d4h index 1Fh (R/W):
+  bit 0-1  Emulation. 0=VGA, 1=EGA, 2=CGA,3=MDA 
+     
+  3D6h (R/W):  Read Bank Register
+  bit 0-4  Apparently the Read bank. (How to enable ?)
+
+  3D7h (R/W):  Single/Write Bank Register
+  bit 0-4  64k Bank number. 
+
+  8286h (R/W): Start pixel low.
+  bit 0-15 Lower 16 bits of the pixel number the operation starts at.
+
+  8288h (R/W): Start pixel high.
+  bit 0-15 Upper 16 bits of the pixel number the operation starts at.
+	   Calculated as (line no)*(pixels per line)+(pixel no in line).
+
+  828Ah (R/W): Line width
+  bit 0-15 Number of pixels in a line.
+
+  828Ch (R/W): Width of op.
+  bit 0-15 Number of pixels the rectangle is wide (for rect fill).
+
+  828Eh (R/W): Height of op.
+  bit 0-15 Number of lines in the rectangle (for rect fill). 
+
+  829Ch (R/W): Start X coordinate
+  bit 0-15 Starting X co-ordinate of the graphics instruction.
+
+  829Eh (R/W): Start Y coordinate
+  bit 0-15 Starting Y coordinate of the graphics instruction.     
+
+  82AAh (R/W): COP status/instruction
+  bit 0-15 (R) When 0 the COP is free.
+	   (W) Graphics instruction:
+		 1: Fill rectangle  
+
+
+  ID Avance Logic AL2101:
+
+    if testinx2(base,$1f,$3b) and testinx2($3ce,13,15) then
+       Avance Logic AL2101 !!
+
+
+
+  Video modes:
+
+    20h  T   132   25  16 
+    21h  T   132   30  16 
+    22h  T   132   43  16
+    23h  T   132   60  16
+    24h  T    80   30  16
+    25h  T    80   43  16
+    26h  T    80   60  16       
+    27h  G   960  720  16  planar
+    28h  G   512  512 256  packed
+    29h  G   640  400 256  packed
+    2Ah  G   640  480 256  packed
+    2Bh  G   800  600  16  planar
+    2Ch  G   800  600 256  packed
+    2Dh  G   768 1024  16  planar
+    2Eh  G   768 1024 256  packed
+    2Fh  G  1024  768   4  
+    30h  G  1024  768  16  planar
+    31h  G  1024  768 256  packed
+    36h  G  1280 1024  16  planar
+    37h  G  1280 1024 256  packed 
+    40h  G   320  200 64k  Sierra 16bit
+    41h  G   512  512 64k  Sierra 16bit
+    42h  G   640  400 64k  Sierra 16bit
+    43h  G   640  480 64k  Sierra 16bit 
+    44h  G   800  600 64k  Sierra 16bit

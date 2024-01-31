@@ -1,0 +1,56 @@
+  Realtek RT 3106    -  Upto 1 Mbyte.
+
+
+ 
+  3CEh index  Fh (R/W): Extended Function.
+  bit   2  Single/Dual bank.
+	   If set 3D6h is the read bank number and 3D7h is the write bank number.
+	   if clear 3D7h is used for both read and write operations.
+
+  3d4h index 1Ah:
+  bit 6-7  Chip version.  0=Version 0, 1= Version 1, 2=Version 2, 3=Version x
+
+  3d4h index 1Eh:
+  bit 0-1  Video Ram. If Chip version =0: 0=256k, 1=512k, 2=768k and 3=1MB
+		      If chip version >0: 0=256k, 1=512k, 2=1MB and 3=2MB.
+	2  
+      4-7  
+
+  3D4h index 1Fh (R/W):
+  bit 0-1  Emulation mode: 0=VGA, 1=EGA, 2=CGA, 3=MDA
+      2-5
+
+  3D6h (R/W): Bank register
+  bit 0-3  64k Bank register   (Read bank if 3CEh index Fh bit 2 set)
+
+  3D7h (R/W): Bank Register
+  bit 0-3  64k bank number.    (Write/single bank)
+
+
+  Test for Realtek Chip:
+
+  if testinx2(crtc,$1f,$3f) and tstrg($3d6,$f) and tstrg($3d7,$f) then
+	Realtek!!!.
+
+
+  Video modes:
+
+    18h  T     80   30  16
+    19h  T     80   43  16
+    1Ah  T     80   60  16
+    1Bh  T    132   25  16
+    1Ch  T    132   30  16
+    1Dh  T    132   43  16
+    1Eh  T    132   60  16
+    1Fh  G    800  600  16  planar
+    20h  G    960  720  16  planar
+    21h  G   1024  768  16  planar
+    22h  G    768 1024  16  planar
+    23h  G   1024  768   4  planar
+    24h  G    512  512 256  packed
+    25h  G    640  400 256  packed
+    26h  G    640  480 256  packed
+    27h  G    800  600 256  packed
+    28h  G   1024  768 256  packed
+    29h  G   1024 1024 256  packed
+    2Ah  G   1280 1024  16  planar

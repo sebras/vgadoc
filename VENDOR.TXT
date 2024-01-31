@@ -1,0 +1,84 @@
+Vendors and contact addresses:
+
+ATI:
+    ATI Technologies Inc.
+    3761 Victoria Park Avenue
+    Scarborough, Ontario
+    M1W 3S2   (Canada)
+
+    Tel:   416-756-0718
+	   416-756-0711   (Tech Support)
+    Fax:   416-756-0720
+    BBS:   416-756-4591
+    Telex: 06-966640 (ATI TOR)
+
+AT&T 
+    Tel:   800-247-1212   (Tech Support)
+    BBS:   201-769-6397
+
+Cardinal:
+    Tel:   717-293-3135   (Tech Support)
+    BBS:   717-293-3124   (Tech Support    14.4 modem)
+
+Diamond:
+    Tel:   408-736-2000   (Tech Support)
+    BBS:   408-730-1100
+
+Genoa:
+    Tel:   408-432-9090   (Tech Support)
+    BBS:   408-943-1231
+
+Headland Technology:
+    Tel:   800-553-1850   (Tech Support)
+    BBS:   415-656-0503
+
+Hercules Computer Tech:
+    Tel:   415-540-6000   (Tech Support)
+    BBS:   415-540-0621
+
+Oak:
+    BBS:   510-657-9451
+
+Orchid Technology:
+
+    Orchid Technology
+    45365 Northport Loop West
+    Fremont, CA  94538
+
+    Tel:   510-683-0323, 510-683-0300
+    Fax:   510-490-9312
+    BBS:   510-683-0327
+
+Paradise:
+    Tel:   800-832-4778   (Tech Support)
+
+S3:
+    S3, Incorporated
+    2933 Bunker Hill Lane, Suite 100
+    Santa Clara, CA 95054
+    Tel:   408-986-8144
+
+Trident:
+    Trident Microsystems, Inc
+    Tel:   408-738-3194   (Tech Support)
+     
+    BBS:   415-691-1016
+
+VESA:
+    Video Electronic Standards Association
+    Suite 360
+    2150 North First Street
+    San Jose, CA 95151-2020
+
+    Tel:   408-435-0333
+    Fax:   408-435-8225
+
+Western Digital:
+    Western Digital Corp.
+    2445 McCabe Way
+    Irvine, CA 92714
+
+    Tel:   714-863-0102
+	   800-832-4778   (Tech Support)
+    BBS:   714-753-1234 
+

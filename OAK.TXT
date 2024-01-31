@@ -1,32 +1,49 @@
    OAK Technologies OTI-067 and 037C.
 
-   OTI037C apparently has max 256Kb and no banking registers.
-   OTI-067 has 256K or 512K and banking registers.
+   OTI037C has 256K or 512K.
+   OTI-067 has 256K or 512K.
+   OTI-077 allows 1MB and up to 1024x768 in 256 colors.
+
+
+  3DEh index  9h (R/W):
+
+  3DEh index 0Ah (R/W):
+
+  3DEh index 0Bh (R/W): 
+  bit 5-7  (077) Chip revision. 5=OTI-077.
 
   3DEh index  Dh (R/W):
-    bit 7  512K if set, 256 else.
+  bit   6  1MB if set
+	7  512K if set, 256 else.
 
   3DEh index 11h (R/W):
-  bit 0-3  Bank no    (Read/Write or two separate banks ??)
-      4-7  Bank no
+  bit 0-3  Read Bank no 
+      4-7  Write Bank no
   Note: Some sources gives this register as 3DFh with no index.
+  Note: This register apparently write only in Oak-037C.
 
 
-  Bank Switching:      (OAK OTI-067 Only)
+  Bank Switching:
 
   Two banks exist in reg 3DEh index 11h.
 
 
   ID Oak VGA:
 
-  if exist($3DE,$d) then
-    if exist($3DE,$11) then OAK_037
-                       else OAK_067 
+  if testinx2($3DE,$D,$38) then
+  begin
+    _OAK_37C  !!
+    if testinx($3DE,$11) then
+      if rdinx($3DE,$B)=5 then _OAK_077      {Haven't tested the -077}
+			  else _OAK_067;
+  end;
+
 
   Modes:
 
-  (OTI 067)
+  (OTI 067/077)
 
+  4Eh  T    80   60  16 (8x8)      Not all 067's
   4Fh  T   132   60  16 (8x8)
   50h  T   132   25  16 (8x14)
   51h  T   132   43  16 (8x8)   
@@ -36,6 +53,11 @@
   55h  G  1024  768   4 ??
   56h  G  1024  768  16 planar
   57h  G   768 1024   4 ??
+  58h  G  1280 1024  16 planar
+  59h  G  1024  768 256 planar           OTI-077 only
+  5Ah  G   512  512 32k Sierra 15-bit    OTI-077 w/Sierra
+  5Bh  G   640  400 32k Sierra 15-bit    OTI-077 w/Sierra
+  5Ch  G   640  480 32k Sierra 15-bit    OTI-077 w/Sierra
 
   (OTI037C "UNIQUE" VGA)
 

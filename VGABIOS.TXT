@@ -87,8 +87,8 @@ INT 10 - VIDEO - READ LIGHT PEN POSITION (EGA Only)
         AH = 04h
 Return: AH = light pen trigger flag
              00h not down/triggered
-             01h down/triggered 
-        DH,DL = row,column of character light pen is on 
+             01h down/triggered
+        DH,DL = row,column of character light pen is on
         CH = pixel row (graphics modes 04h-06h)
         CX = pixel row (graphics modes with >200 rows)
         BX = pixel column
@@ -224,7 +224,7 @@ INT 10 - VIDEO - SET SINGLE PALETTE REGISTER (PCjr,EGA,MCGA,VGA)
         AX = 1000h
         BL = palette register number (00h-0Fh)
            = attribute register number (undocumented)
-             10h attribute mode control register (should let BIOS control 
+             10h attribute mode control register (should let BIOS control
                  this)
              11h overscan color register (see also AX=1001h)
              12h color plane enable register (bits 3-0 enable corresponding
@@ -365,7 +365,7 @@ except that:
            R0A = bytes/char-2 ; cursor start
            R0B = 0            ; cursor end
            R12 = ((rows+1)*(bytes/char))-1 ; vertical display end
-           R14 = bytes/char	; underline loc
+           R14 = bytes/char; underline loc
                   (*** BUG: should be 1 less ***)
 ----------1011-------------------------------
 INT 10 - VIDEO - GRAPHICS-MODE CHARACTER GENERATOR FUNCTIONS (PS, EGA, VGA)
@@ -711,7 +711,7 @@ Memory:
                               6h Pri EGA+old color display 40 x 25,  Sec MDA
                               7h Pri EGA+old color display 80 x 25,  Sec MDA
                               8h Pri EGA+ECD normal mode (CGA emul), Sec MDA
-                              9h Pri EGA+ECD enhanced mode,	       Sec MDA
+                              9h Pri EGA+ECD enhanced mode,       Sec MDA
                               Ah Pri EGA mono display,       Sec CGA 40 x 25
                               Bh Pri EGA mono display,       Sec CGA 80 x 25
                   bits 7-4: power-on state of feature connector bits 3-0
@@ -781,11 +781,11 @@ Elements appear in the order:
   18h      VGA Modes 02h or 03h in 400-line mode
   19h      VGA Mode  07h in 400-line mode
   1Ah-1Ch  VGA Modes 11h-13h
- 
+
 Format of Video Parameter Table element [EGA, VGA only]:
 Offset  Size    Description
-  00h   BYTE    Columns on screen	   (see 0:44Ah)
-  01h   BYTE    Rows on screen minus one	  (see 0:484h)
+  00h   BYTE    Columns on screen   (see 0:44Ah)
+  01h   BYTE    Rows on screen minus one  (see 0:484h)
   02h   BYTE    Height of character in scan lines (see 0:485h)
   03h   WORD    Size of video buffer   (see 0:44Ch)
   05h  4 BYTEs  Values for Sequencer Registers 1-4
@@ -812,8 +812,8 @@ Format of Video Parameter Table [MCGA only] {guesswork from inspection}:
 
 Format of Video Parameter Table element [MCGA only]:
 Offset  Size    Description
-  00h   BYTE    Columns on screen       	  (see 0:44Ah)
-  01h   BYTE    Rows on screen minus one	  (see 0:484h)
+  00h   BYTE    Columns on screen         (see 0:44Ah)
+  01h   BYTE    Rows on screen minus one  (see 0:484h)
   02h   BYTE    Height of character in scan lines (see 0:485h)
   03h   WORD    Size of video buffer      (see 0:44Ch)
   05h   WORD    ??? always zero
@@ -833,3 +833,4 @@ Note: If default values (from the Video Parameter Table) are
       over-ridden at a mode set by the VGA User Palette Profile
       Table, then the Dynamic Save Area is updated with the
       default values, not the User Profile ones.
+

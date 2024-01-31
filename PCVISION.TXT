@@ -15,7 +15,7 @@ bit   0  Zoom. If set pixels are doubled when displayed.
          will increment the Gain and Offset counters if the appropriate bits
          (bit 1 and 2) are clear.
       4  Board Select. If set the frame buffer is mapped into PC memory.
-    5-7  Page select. Selects which of 8 64k pages are mapped in.    
+    5-7  Page select. Selects which of 8 64k pages are mapped in.
 
 base+1  (R/W): Lut Control Register
 bit 0-1  Look-Up Table Mode. Selects one of 4 Look Up Table banks
@@ -41,7 +41,7 @@ bit 0-7  Each write to this register will increment or decrement (depending on
 base+5  (R/W): Acquire and Status register
 bit   0  Video Input Select. If set video input is taken from Channel 1,
          else from Channel 0.
-      1  Clock Source Select. If set clock source is a Phase-Locked Loop, 
+      1  Clock Source Select. If set clock source is a Phase-Locked Loop,
          else a Crystal Oscillator.
       2  (R) Odd/Even Status. Odd field displayed if set.
       3  (R) Last Field Status. If clear the PCVISION plus is acquiring
@@ -51,10 +51,10 @@ bit   0  Video Input Select. If set video input is taken from Channel 1,
       5  (R) Horizontal Blank Status.
              Horizontal blank active if clear (12.7us).
     6-7  Acquire Mode.
-           0: Freeze. Terminate operation. 
+           0: Freeze. Terminate operation.
            1: Clear.  Clear video memory.
-           2: Snap.   Acquire a single image.  
-           3: Grab.   Continuously acquire images.  
+           2: Snap.   Acquire a single image.
+           3: Grab.   Continuously acquire images.
          When read 0 indicates the system is not busy.
 
 base+6  (R/W): Pan Register
@@ -62,10 +62,10 @@ base+7  (R/W): Scroll Register
 base+8  (R/W): Memory Access Control Register
 base+9  (R/W): Host Mask Register
 bit 0-7  Each bit set prevents the corresponding bit plane from changes
-         during host access and clear operations.     
+         during host access and clear operations.
 
 base+Ah (R/W): Video Mask Register
 bit 0-7  Each bit set prevents the corresponding bit plane from changes
-         during acquire operations.     
+         during acquire operations.
 
-base+Bh (R/W): Pixel Buffer Register 
+base+Bh (R/W): Pixel Buffer Register

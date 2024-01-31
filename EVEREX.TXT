@@ -3,18 +3,19 @@
 
   Ev236  UltraGraphics   (Trident chip).
   Ev620  Vision VGA      (Trident chip).
+  Ev623  Viewpoint VRAM  (ET4000)
   Ev629  Viewpoint TC    (Tseng 4000 chip with special DAC 16M colors).
   Ev673  EVGA            (Trident chip).
   Ev678  Viewpoint       (Trident chip).
 
 
-  3C2h (W)): Misc Output Register
-    bit 5  Bit 1 of Bank No.
-  Note: this register can be read from port 3CCh.
+3C2h (W)): Misc Output Register
+bit 5  Bit 1 of Bank No.
+Note: this register can be read from port 3CCh.
 
 
-  3C4h index  8  (R/W):
-    bit 7  Bit 0 of Bank no.
+3C4h index  8  (R/W):
+bit 7  Bit 0 of Bank no.
 
 
   Bank switching.
@@ -42,7 +43,7 @@
   BIOS extensions:
 
 ----------100070-----------------------------
-INT 10 - VIDEO - Everex Micro Enhancer EGA/Viewpoint VGA - EXTENDED MODE SET
+INT 10 - VIDEO - Everex Micro Enhancer EGA/Viewpoint VGA - Extended Mode Set
         AX = 0070h
         BL = mode (see below)
 
@@ -86,7 +87,7 @@ Values for video mode:
  76h = G   64x30  8x16  512x480   16M             Viewpoint TC
  77h = G   80x30  8x16  640x480   16M             Viewpoint TC
 ----------107000BX0000-----------------------
-INT 10 - Everex Extended Video BIOS - RETURN EMULATION STATUS
+INT 10 - Everex Extended Video BIOS - Return Emulation Status
         AX = 7000h
         BX = 0000h
 Return: CL = monitor type
@@ -94,7 +95,7 @@ Return: CL = monitor type
              01h CGA
              02h EGA
              03h digital multifrequency
-             04h IBM PS/2 
+             04h IBM PS/2
              05h IBM 8514
              06h SuperVGA
              07h analog multifrequency
@@ -112,14 +113,14 @@ Return: CL = monitor type
              bits 0-3:  board ID revision
         DI = BCD BIOS version number
 ----------107000BX0004-----------------------
-INT 10 - Everex Extended Video BIOS - GET PAGING FUNCTION POINTER FOR CUR MODE
+INT 10 - Everex Extended Video BIOS - Get Paging Function Pointer for Cur Mode
         AX = 7000h
         BX = 0004h
 Return: ES:DI -> FAR paging function (call with DL = page to set)
 Note:   the word preceding ES:DI is the length of the function in bytes, and
         the last byte of the function is a FAR return instruction.
 ----------107000BX0005-----------------------
-INT 10 - Everex Extended Video BIOS - GET SUPPORTED MODE INFO
+INT 10 - Everex Extended Video BIOS - Get Supported Mode Info
         AX = 7000h
         BX = 0005h
         CL = maximum number of modes to get info for
@@ -147,10 +148,10 @@ Offset Size  Description
                     5 monochrome mode
                     4 interlaced display
                     3 requires special oscillator
-                  2,1 memory required 
+                  2,1 memory required
                       00 = 256K
                       01 = 512K
-                      10 = 1024K 
+                      10 = 1024K
                       11 = 2048K
                     0 reserved
  03h   BYTE  font height

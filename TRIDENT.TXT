@@ -1,17 +1,27 @@
   Trident SuperVGA
 
-  Trident 8800BR   512k   Only 128K banks.
-          8800CS   512k   Has 64k banks and old/new mode
-          8900B    1MB
-          8900C    1MB
-          8900CL   2MB
-          8900D    2MB   Same as 8900CL, but with a few bug corrected
-          8900CXr
-          9200CXi
-          9000           Low component version 256K on chip
-          9000i          Low component count. 15/16 bit DAC on chip
-          GUI9420
-          LCD9100B
+  Trident TVGA8800BR   512k  Only 128K banks.
+          TVGA8800CS   512k  Has 64k banks and old/new mode
+          TVGA8900B    1MB
+          TVGA8900C    1MB
+          TVGA8900CL   2MB
+          TVGA8900D    2MB   Same as 8900CL, but with a few bug corrected
+                             (which?)
+          TVGA9000           Low component version
+          TVGA9000i          Low component count. 15/16 bit DAC on chip
+                             Clock generator on chip
+          9200CXr      2MB
+          TGUI9400CXi  2MB   Clock & 24bit DAC onchip
+          TGUI9420DGi  2MB   As 9400, but with Accelerator (BitBlt, Color Exp
+                             Fills, Line draw and Linear Frame buffer)
+          TGUI9430           As 9420 + Hardware cursor
+          TGUI9440AGi  2MB   As 9430, 16bit DAC interface and programmable
+                             clock ??
+          TGUI9660XGi        64bit video memory path
+          TGUI9680           As 9660, but with video acc
+
+
+          LCD9100B      Suppose these are LCD controllers, anyone seen them?
           LCD9100
           LX8200
 
@@ -20,7 +30,7 @@ Support chips:
 
 TCK9001   Clock chip for the 8900B.
           Supplies: 25.175, 28.322, 44.9, 36, 57.272, 65, 50.35, 40 MHz
-   
+
 TCK9002   Clock chip for the 8900C and later.
           Supplies: 25.175, 28.322, 44.9, 36, 57.272, 65, 50.35, 40,
                     88, 98, 118.8, 108 MHz
@@ -29,9 +39,10 @@ TCK9004   Clock chip for the 8900CL and later.
           Supplies: 25.175, 28.322, 44.9, 36, 57.272, 65, 50.35, 40,
                     88, 98, 118.8, 108, 72, 77, 80, 75 MHz
 
+TKD8001 "ColorSync" truecolor RAMDAC
+
 
    What are the specs for all the new chips??  (CX,CXi,CL,CXr,GUI...)
-
    The Trident 8800 chips have a problem with 256 color modes,
    as they always double the pixels output in 256 color mode.
    Thus a 640x400 256 color mode (5Ch) actually uses a 1280x400
@@ -44,39 +55,40 @@ a DAC, the mode is just set as if it was present, resulting in 1024x480,
 1280x480 and 1600x600 256color modes if an ordinary DAC is installed.
 
 
-100h (R/W?): Microchannel ID low
-bit 0-7  Card ID bit 0-7
-
-101h (R/W?): Microchannel ID high
-bit 0-7  Card ID bit 8-15
+100h W(R/W?): Microchannel ID low/high
+bit 0-15  Card ID bit 0-15
 
 3C3h (R/W): Microchannel Video Subsystem Enable Register:
 bit 0  Enable Microchannel VGA if set
 
-3C4h index  Bh (R): Chip Version
+3C4h index 0Bh (R): Chip Version
 bit 0-7  Chip ID
            1  = TR 8800BR
            2  = TR 8800CS
            3  = TR 8900B
-           4  = TR 8900C
-          13h = TR 8900C
+           4  = TVGA8900C
+          13h = TVGA8900C
           23h = TR 9000
-          33h = TR 8900CL or TVGA 8900D
+          33h = TVGA8900CL, TVGA8900D or TVGA 9000C
           43h = TVGA9000i
-          53h = TR 8900CXr
+          53h = TR 9200CXr
           63h = TLCD9100B
-          73h = TR GUI9420
+          73h = TGUI9420
           83h = TR LX8200
-          93h = TR 9200CXi
+          93h = TGUI9400CXi
           A3h = TLCD9320
-          F3h = TR GUI9420
+          C3h = TGUI9420DGi
+          D3h = TGUI9660XGi
+          E3h = TGUI9440AGi
+          F3h = TGUI9430       One source says 9420 ??
+       The 63h, 73h, 83h, A3h and F3h entries are still in doubt.
 
 Note:  Writing to index Bh selects old mode registers.
        Reading from index Bh selects new mode registers.
 Note:  Writing to this register in order to force old mode registers
        should be done with two 8bit writes, not one 16bit write.
 
-3C4h index  Ch (R/W): Power Up Mode Register 1
+3C4h index 0Ch (R/W): Power Up Mode Register 1
 bit   0  Fast Decode if set, Slow if clear
       1  (9000 & LCD9100) If clear 0 Wait states,
               if set bit 6 determines number of wait states.
@@ -91,7 +103,7 @@ bit   0  Fast Decode if set, Slow if clear
 Note: This register can only be changed if New Mode Control 1 (3C4h index 0Eh)
       bit 7 is set
 
-3C4h index  Dh (R/W): Old Mode Control 2
+3C4h index 0Dh (R/W): Old Mode Control 2
 bit 0-2  Emulation mode
          0=VGA, 3=EGA, 5=CGA,MDA,Hercules
       4  Enable Paging mode if set. If set the CRTC offset (3d4h index 13h)
@@ -100,20 +112,21 @@ bit 0-2  Emulation mode
          of 8 bytes rather than 4 (256 color modes only).
       5  DRAM clock enabled if set.
 
-3C4h index  Dh (R/W): New Mode Control 2                          (not 8800BR)
+3C4h index 0Dh (R/W): New Mode Control 2                          (not 8800BR)
 bit   0  Clock Select bit 2. Bits 0-1 are in 3CCh bits 2-3.
          Clock table:
-            0: 25.275   1: 28.322    2:  44.9      3:  36
+            0: 25.1 75   1: 28.322    2:  44.9      3:  36
             4: 57.272   5: 65        6:  50.35     7:  40
             8: 88       9: 98       10: 118.8     11: 108
            12: 72      13: 77       14: 80        15: 75
          For the 8800 and 8900B only the first 8 clocks are available.
+         For the 9000i line 3 is: 8: 25.175, 9: 28.322, 10: 62.3, 11: 44.9
     1-2  Divide pixel clock by: 0=1, 1=2, 2=4, 3=1.5
       6  (9xxx) Clock Select bit 3. See bit 0
 Note: The old/new Mode Control 1/2 registers are selected by
       reading and writing the Chip version register (index Bh).
 
-3C4h index  Eh (R/W): Old Mode Control 1
+3C4h index 0Eh (R/W): Old Mode Control 1
 bit   0  (8900 Only) CRTC Address bit 17. Apparently this determines in which
          part of memory the display is, as the display can not cross this
          line, but can be on either side. Note that in Paged Mode (3C4h Old
@@ -124,7 +137,7 @@ bit   0  (8900 Only) CRTC Address bit 17. Apparently this determines in which
       4  (8900C, CL, CXr, GUI9420) Clock Select bit 3.
          See New mode 3C4h index Dh bit 0.
 
-3C4h index  Eh (R/W): New Mode Control 1                          (not 8800BR)
+3C4h index 0Eh (R/W): New Mode Control 1                          (not 8800BR)
 bit 0-3  64k Bank nbr. When writing to this field XOR with 02h, when reading
          from this field no XOR is needed. This is used for Trident detection.
          In planar modes bits 0 and 2 form a two bit field.
@@ -140,33 +153,67 @@ bit 0-3  Switch settings
       6  Enable ON-Card ROM if set
       7  16 bit ROM access enabled if set
 
+3CEh index 0Eh (R/W):  New Source Address Register           (8900CL/D,9200 +)
+bit 0-3  Bank register. If 3CEh index Fh bit 2 is clear and bit 0 is set this
+         is the read bank and 3C4h index Eh the write register. Note that bit
+          1 is inverted like 3C4h index Eh bit 1.
+
+3CEh index 0Fh (R/W):  Miscellaneous Extended Functions      (8900CL/D,9200 +)
+bit   0  DUAL. If set selects dual bank mode with separate read and write
+         bank registers. If bit 2 is set 3D9h is the read bank and 3D8h the
+         write bank, if bit 2 is clear 3CEh index Eh is the read bank and 3C4h
+         index Eh the write bank
+         3D8h is the combined read/write bank. Only active if bit 2 is set.
+      1  When set the packed pixel modes (256 or more colors) uses bits 0-1 of
+         the PEL panning register (3C0h index 13h) for single pixel horizontal
+         scrolling rather than bits 1-2 (as Standard VGA).
+      2  ENALTP. Set to use the alternative banking registers at 3D8h/3D9h,
+         clear to use the old banking registers.
+         ?? Must be set when 3C4h index Ch bit 5 is set ??
+      3  If set character clocks are 16pixels wide rather than 8
+
 3d4h index 1Eh (R/W): Module Testing Register
-bit 2  Vertical interlace if set
-       In interlaced modes the CRTC offset (3d4h index 13h) is the number of
-       bytes in TWO scanlines. Note that in interlaced modes the line doubling
-       caused by index 9 bits 0-4,7 is unlikely to work, as the (even,odd)
-       linepair is repeated rather than each individual line causing stripes.
-    3  If set Load fonts from Bottom, from top if clear
-    4  If set the display wraps back to line 0 when the line counter reaches
-       512.
-    5  CRTC starting address bit 16
-    7  (8900 Only) Host address bit 16. If clear bit 5 has no effect.
-       This does not affect 3C4h Old Mode index 0Eh bit 0.
+bit  2  Vertical interlace if set
+        In interlaced modes the CRTC offset (3d4h index 13h) is the number of
+        bytes in TWO scanlines (NOT true for the 9440AGi!).
+        Note that in interlaced modes the line doubling caused by index 9 bits
+         0-4,7 is unlikely to work, as the (even,odd) linepair is repeated
+        rather than each individual line causing stripes.
+     3  If set Load fonts from Bottom, from top if clear
+     4  If set the display wraps back to line 0 when the line counter reaches
+        512.
+     5  CRTC Display Start Address bit 16. Bits 0-15 are in 3d4h index Ch,Dh
+     7  (not 88xx) Host address bit 16. If clear bit 5 has no effect.
+          This does not affect 3C4h Old Mode index 0Eh bit 0.
 
-3d4h index 1Fh (R/W): Software Programming Register  (8900 Only)
+3d4h index 1Fh (R/W): Software Programming Register
 bit 0-1  (8800, 8900, 9000) Memory size  0=256k, 1=512k, 2=768k, 3=1M.
-    0-2  (8900CL, 8900CXr, GUI9420) Memory size  0=256k, 1=512k, 2=768k,
-           3=1M, 4=256k, 5=512k, 6=768k, 7=2M.
+    0-2  (8900CL, 9200CXr, 94xx, 9660) Memory size  0=256k, 1=512k,
+           2=768k, 3=1M, 4=256k, 5=512k, 6=768k, 7=2M.
+    4-6  (9420DGi) Monitor Type.
+         (9430,9440,9660) Monitor Type.
+Note: This register set by software
+      Everex 8800 based cards have different layout, see below
 
-3d4h index 1Fh (R/W): Scratch Register               (8800 Only)
-bit 0  Paged memory mode in effect
-    1  Memory size  0=256k, 1=512k
-    2  Analog monitor attached
-    3  44.9 MHz oscillator present
+
+3d4h index 1Fh (R/W): Scratch Register                     (Everex 8800 Cards)
+bit   0  Paged memory mode in effect
+      1  Memory size  0=256k, 1=512k
+      2  Analog monitor attached
+      3  44.9 MHz oscillator present
 Note: This register is set by software.
+
+3d4h index 21h (R/W):  Configurable Linear Addressing Register          (94xx)
+Bit 0-3  LAWB0-3. Bits 20-23 of the Linear Aperture address
+      4  LAWS. If set the aperture is 2Mbytes, if clear 1MB.
+      5  ENLA. Set to enable Linear aperture.
+    6-7  Linear Aperture Address bits 24-25
 
 3d4h index 22h (R): CPU Latch Read Back
 bit 0-7  Data Latch value for current read plane.
+
+3d4h index 23h (R/W):
+bit 0-5  ??
 
 3d4h index 24h (R): Attribute State Read Back
 bit 0-6  Reserved
@@ -177,25 +224,158 @@ bit 0-6  Reserved
 3d4h index 26h (R): Attribute Index Read Back
 bit 0-7  Attribute Index Register value
 
-3d4h index 27h (R/W):                                          (8900CL/D only)
+3d4h index 27h (R/W):                                             (8900CL/D +)
 bit 0-1  Display Start Address bit 17-18. Bit 16 is in index 1Eh bit 5.
 
-3d4h index 29h (R/W):                                          (8900CL/D only)
+3d4h index 28h (R/W):
+bit 0-7 ??
+
+3d4h index 29h (R/W):                                             (8900CL/D +)
 bit   0  Connected to the RS2 input on the DAC ?.
+      1  ??
+      4  CRTC offset bit 8 ??
 
-3D8h (R/W):                                                    (8900CL/D only)
-bit 0-4  Bank number in 64k units. 3C4h index Eh appears still to work.
+3d4h index 2Ah (R/W):
+bit   6  ??
+
+3d4h index 2Fh
+bit 0-2  ?
+      4  ?
+    5-6  ?
+
+3d4h index 36h
+bit   1  ?
+      7  ?
+
+3d4h index 38h                                                          (9440)
+bit 2-3  Pixel depth?. 1: 15/16 bit modes, 2: 24bit modes, 0: all other modes
+
+3d4h index 40h W(R/W):                                                  (9440)
+bit 0-  Hardware Cursor *tal Location
+
+3d4h index 42h W(R/W):                                                  (9440)
+bit 0-  Hardware Cursor *tal Location
+
+3d4h index 44h W(R/W):                                                  (9440)
+bit 0-  Location of hardware cursor map in video memory in units of 1Kb
+        The hardware cursor map appears to be a 32x32x2 or 64x64x2 bitmap
+        organised in lines of 8 or 16 bytes, each having first 4 bytes
+        (32pixels) of AND data and then 4bytes XOR data (windows style).
+        The cursor displayed also depends on the cursor style (3d4h index 50h
+        bit 6).
+           AND:   XOR:  Style:   Resulting screen:
+            0      0      0      Palette index 0 ?
+            1      0      0      Screen data (Transparent cursor)
+            0      1      0      Palette index 255 ?
+            1      1      0      Inverted screen (XOR cursor)
+            0      0      1      Screen data (Transparent cursor)
+            1      0      1      Palette index 0 ?
+            0      1      1      Screen data (Transparent cursor)
+            1      1      1      Palette index 255 ?
+
+3d4h index 46h (R/W):                                                   (9440)
+bit 0-5  Cursor Horizontal hotspot. The position (in pixels from the left) of
+         the cursor hotspot within the 32x32 or 64x64 map. The displayed cursor
+         starts at the hotspot and ends 32/64 pixels from the left edge (i.e.
+         it does not wrap to the next line).
+
+3d4h index 47h (R/W):                                                   (9440)
+bit 0-5
+
+3d4h index 50h (R/W):                                                   (9440)
+bit    0  Set for 64x64 cursor, clear for 32x32 cursor
+       6  Clear for Cursor Style 0 (Windows?), set for Cursor Style 1 (X11?)
+       7  Enable hardware cursor if set
+
+3D8h (R/W):  Destination Segment Register                    (8900CL/D,9200 +)
+bit 0-4  Bank number in 64k units. If 3CEh index Fh bit 0 is set this is the
+         write bank, if not the combined read/write bank.
+         This register is only active if 3CEh index Fh bit 2 is set.
+
+3D9h (R/W):  Source Segment Register                         (8900CL/D,9200 +)
+bit 0-4  If 3CEh index Fh bit 0 is set this is the read bank.
+         This register is only active if 3CEh index Fh bit 2 is set.
 
 
-Note: on the 8900CL, 9000i, 8900CXr, GUI9420, TVGA9200CXi and TLCD9320
-      3d4h index 20h, 23h, 25h, 28h-2Ch appears to be used for an 8 byte FIFO?
+Note: Ferraro (in Programmer's Guide to... 3rd edition) documents the
+      accelerator registers at 21xAh for the later Tridents, however so far
+      I have been unable to verify this.
+
+
+43C6h W(R/W):  Memory Clock                                             (9440)
+bit 0-15  Selects the memory clock. 2C6h = 50MHz, 307h = 58MHz, 87h = 64MHz
+            8Eh = 75MHz
+Note: 3C4h index Eh (new) bits 1 & 7 must be set to update this register
+
+43C8h W(R/W):  Video Clock                                              (9440)
+bit 0-15  Selects the video clock when 3C2/Ch bits 2-3 = 2.
+Note: 3C4h index Eh (new) bits 1 & 7 must be set to update this register
 
 
 46E8h (R):  Video Subsystem Enable Register
 bit 3  Enable VGA if set
 
 
+The memory mapped registers appears to be mapped at BFF00h (how to enable
+them ?). Probably only exists on the 9440 and later (9420?)
 
+M+20h (R?)
+bit   5  Set when the graphics engine is busy?
+      6  Set if ?  Data transfers should wait for it to clear?
+      7  Set when ?
+
+M+22h (R/W):
+bit  0-?  9 for non-8bit modes, 4 for 8bit modes (<=1024), 8 for other modes
+
+M+24h (R/W):
+bit  0-2  Write 1 to start a Blit, 4 to start a line draw ?
+
+M+27h (R/W):
+bit  0-7  Raster op (=Bits 16-23 of the Windows ROP3).
+
+M+28h W(R/W):
+bit    2  Set when using pattern ??
+       5  Set when using pattern ??
+       6  ??
+       8  If set the Blit moves bottom-to-top (decreasing address), if clear
+          it is top-to-bottom (increasing address).
+       9  If set the Blit moves right-to-left (decreasing address), if clear
+          it is left-to-right (increasing address).
+      14  Set for solid fills ??
+
+M+2Bh (R/W):
+bit  0-2  Offset into the pattern ?
+
+M+2Ch W(R/W):
+bit 0-  Background color
+
+M+30h W(R/W):
+bit 0-  Foreground color
+
+M+34h W(R/W):
+bit 0-15  Address of ?pattern? in units of 64bytes
+
+M+38h W(R/W):
+bit 0-  Destination starting X-coordinate
+
+M+3Ah W(R/W):
+bit 0-  Destination starting Y-coordinate
+
+M+3Ch W(R/W):
+bit 0-  Source starting X-coordinate
+
+M+3Eh W(R/W):
+bit 0-  Source starting Y-coordinate
+
+M+40h W(R/W):
+bit 0-  Width of the Blit area in pixels
+
+M+42h W(R/W):
+bit 0-  Height of the Blit area in scanlines
+
+M+44h
+
+M+46h W(R/W):
 
   Bank selection:
 
@@ -231,7 +411,7 @@ bit 3  Enable VGA if set
       $53:Trident TR8900CXr
       $63:Trident LCD9100B;
       $83:Trident LX8200;
-      $93:Trident TVGA9200CXi
+      $93:Trident TVGA9400CXi
       $A3:Trident LCD9320;
   $73,$F3:Trident GUI9420;
       end;
@@ -262,16 +442,16 @@ bit 3  Enable VGA if set
     63h  G  1280 1024  16  PL4     Which chip/BIOS rev ?
     64h  G  1280 1024 256  P8      8900CL only
     6Ah  G   800  600  16  PL4     Newer boards
-    6Bh  G   320  200 16m  P24     TVGA9000i
-    6Ch  G   640  480 16m  P24     8900CL only
-    6Dh  G   800  600 16m  P24     8900CL only
+    6Bh  G   320  200 16m  P24     TVGA9000i+
+    6Ch  G   640  480 16m  P24     8900CL+
+    6Dh  G   800  600 16m  P24     8900CL+
 
-    70h  G   512  480 32K  P15     89xx with Sierra DAC 
-    71h  G   512  480 64K  P16     89xx with Sierra DAC 
-    74h  G   640  480 32K  P15     89xx with Sierra DAC 
-    75h  G   640  480 64K  P16     89xx with Sierra DAC 
-    76h  G   800  600 32K  P15     89xx with Sierra DAC 
-    77h  G   800  600 64K  P16     89xx with Sierra DAC 
+    70h  G   512  480 32K  P15     89xx with Sierra DAC
+    71h  G   512  480 64K  P16     89xx with Sierra DAC
+    74h  G   640  480 32K  P15     89xx with Sierra DAC
+    75h  G   640  480 64K  P16     89xx with Sierra DAC
+    76h  G   800  600 32K  P15     89xx with Sierra DAC
+    77h  G   800  600 64K  P16     89xx with Sierra DAC
     78h  G  1024  768 32K  P15     8900CL with Sierra DAC
     79h  G  1024  768 64K  P16     8900CL with Sierra DAC
     7Eh  G   320  200 32K  P15     TVGA9000i
@@ -321,8 +501,10 @@ Return: AH = Status of call:  (Trident Super VGA Chips)
              85h   Dead or no crystal
              86h                               Wrong CRTC base for dual screen
              87h                               Text mode not supported
+Note: The return code appears to be unsupported on some newer Trident
+      card, i.e. 9440AGi
 ----------1012-BL11------------------------------
-INT 10 - VIDEO - Trident BIOS - GET BIOS INFO
+INT 10 - VIDEO - Trident BIOS - Get BIOS Info
         AH = 12h
         BL = 11h
 Return: AL = 12h if function supported

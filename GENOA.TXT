@@ -10,8 +10,7 @@
           64/6600A support 70Hz refresh rate.
 
           7900 is Tseng ET4000 based with SS24 DAC.
-             
-          New 7000 series appears to be Tseng 4000 based.  
+          New 7000 series appears to be Tseng 4000 based.
 
 
 
@@ -71,10 +70,10 @@ bit   6  If set Access even pixels in plane 0/1 and odd pixels in plane 2/3.
       7  If set Display even pixels from plane 0/1 and odd pixels from plane
          2/3. (Mode 7Fh)
 
-3CEh index  Ah (R/W):  Program Status Register 1
+3CEh index 0Ah (R/W):  Program Status Register 1
 bit 0-7  Scratch
 
-3CEh index  Bh (R/W):  Program Status Register 2
+3CEh index 0Bh (R/W):  Program Status Register 2
 bit 0-7  Scratch
 
 3d4h index 2Eh (R/W):  Herchi Register
@@ -191,7 +190,7 @@ INT 10 - Genoa 7900 Set 24bit mode
         AX = 10F0h
         BL = 3Eh
 
-        Sets 640 x 480 16M color mode.  
+        Sets 640 x 480 16M color mode.
 Return: AX = 0010h if successful
 ----------1010F0-----------------------
 INT 10 - Genoa 7900 - Get DAC Type
@@ -203,7 +202,7 @@ Return: AX = 0010h
            = 0602h     Special New DAC         16/256/32K/64K/256K  colors
            = 0802h     Special New DAC         16/256/32K/64K/16M  colors
 
-Note:  *Genoa's MultimediaVGA Model 7900 will return BX = 0802H 
-        (8/8/8 format capability) and Model 7900sx will return 
+Note:  *Genoa's MultimediaVGA Model 7900 will return BX = 0802H
+        (8/8/8 format capability) and Model 7900sx will return
          BX = 0602H (6/6/6 format capability).
 Note:  The one Genoa 7900 I've seen returns BX = 0803h.

@@ -180,14 +180,14 @@ bit  0-7  The color to compare with.
 
 index 4Fh (R/W): Color Mask Register
 bit  0-7  Only the bit positions, which are 0 in this register are used in
-          color comparisons 
+          color comparisons
 
 index 50h (R/W): Display Window Interlace Control
 bit    0  If set the Display Window is interlaced.
        1  If set use the VFLD input for the display window field signal,
           rather than the internally generated field signal.
        2  If set invert the Display Window field signal polarity.
-     3-4  Replication of fields. 
+     3-4  Replication of fields.
             0,2: No replication.
               1: Replicate even field.
               3: Replicate odd field.

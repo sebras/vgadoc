@@ -1,9 +1,11 @@
-UMC 85c408
-
+UMC UM85c408  max 1MB
+UMC UM85c418  max 1MB. 32bit bus. IDE HD controller built in.
 
 Support chips:
 
-UM9502     Clock chip
+UM9502     Clock chip. Supplies 25.175, 27.8?, 36, 65.1, 44.9, 50, 80, 75 MHz
+
+
 
 UM70c178   High color 15/16 bit DAC (Similar to Sierra SC11487)
 
@@ -20,15 +22,17 @@ bit 0-3  Read bank in 64K units
     4-7  Write bank in 64K units
 
 3C4h index 7 (R/W):
-bit   0  Clock select?
+bit   0  Clock Select bit 2 (bits 0-1 are in 3C2h/3CCh bits 2-3)
       1
       2  If set memory access is 16bit, if clear 8bit.
       3
+      4  If set the "blanked" lines flash a copy of the 1st ? line
     6-7  Video Memory: 0: 256K, 1: 512K, 2/3: 1MB
          Set by BIOS on initialisation.
 
 3C4h index 8 (R/W):
-bit   3  If set causes the first >200 pixels of each scanline to be blanked ??
+bit   0  If set trashes display ?
+      3  If set causes the first >200 pixels of each scanline to be blanked ??
       5  If set changes the order/way pixels are displayed:
          In 16 color modes each even byte is shown twice, causing the odd ones
          to be skipped.
@@ -36,18 +40,19 @@ bit   3  If set causes the first >200 pixels of each scanline to be blanked ??
          bank (64K) is shown twice, causing the odd ones to be skipped.
          In extended 256color modes (3d4h index 33h bit 4 is set) some strange
          pixel replication happens
-      6  Clock select ?
+      6  If set divides Video Clock by 2
       7  If clear disables bit 0 of the bank registers
 
 3C4h index 9 (R/W):
 bit   2  Causes drastic color shifts if set??
       3  Blanks display if set
-      7  Clock select ??
+      7  If set divides Video Clock by 2
 
 3C4h index 0Ah (R/W):
 
 3CEh index  9  (R/W):
-bit   2
+bit   1  If set causes flashing on the start of color blocks ??
+      2  If set causes the image to be more crude (even pixels shown twice) ?
       3  Changes the order/way pixels are decoded within each byte/word/dword.
 
 3CEh index 0Ah (R/W):  Scratch
@@ -55,7 +60,7 @@ bit   0
       1
       2  If set HiColor is 64K, if clear 32K
       3  If set only use lowest 2 bits of each bank register
-      4  
+      4
       6
       7  If set only use lowest bit of the bank registers
 
@@ -64,17 +69,25 @@ bit 0-7  Current Video Mode
 
 3d4h index 2Eh (R/W):
 bit   3  If set doubles each scan line
-    4-5  Clock select ??
-      7  Clock select ??
+      4  If set divides Video Clock by 3.5 ??
+      5  ??
+      7  ??
 
 3d4h index 2Fh (R/W):
 bit   0  Set if in an interlaced mode
       1  If set disables access to memory above 256K ?
-    4-7  Clock select ??
+    4-7  Affects the Clock selection ??
 
 3d4h index 33h (R/W):
-bit   1  Display Start Address bit 16
-      4  Set if in an extended 256color mode
+bit 0-1  Display Start Address bit 16-17
+      4  If set the display wraps at 256K
+      5  If set pixels are doubled both horizontally and vertically ??
+
+3d4h index 35h (R/W):                                               (418 only)
+bit 0-3
+
+
+Set if in an extended 256color mode
 
 
 ID UMC superVGA:

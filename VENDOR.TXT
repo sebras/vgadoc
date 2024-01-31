@@ -1,7 +1,36 @@
 Vendors and contact addresses:
 
 2-the-Max:
-    BBS:   +1 510-657-9451
+    See Focus Information Systems
+
+
+3dLabs (Glint):
+    3dLabs Ltd
+    Meadlake Place, Thorpe Lea Rd
+    Egman Surrey TW208ME
+    UK
+
+    Phone: +1 784-470555
+    Fax:   +1 784-470699
+
+
+Acer:
+    Acer Peripherals Inc
+    6 Feng Shu Tsuen, Kweishan Sec 2
+    RC-Taoyuan 333336, Taiwan
+    Phone: +886 3-3204242
+    Fax:   +886 3-33502312
+
+    or
+
+    Acer Sertek Inc
+    11-15F, No 135, Sec 2 Chien Kuo N, Rd
+    RC-Taipei, Taiwan
+    Phone: +886 2-5006363
+    Fax:   +886 2-5011796
+
+    WWW: www.acer.com
+Which one makes the Acer (ALI) chips ?
 
 
 Actix:
@@ -13,14 +42,15 @@ Actix:
     Tel:   +1 800-927-5557
            +1 408-986-1625
     Fax:   +1 408-986-1646
-
+    BBS:   +1 408-970-3719
 
 Ahead:
     Ahead Systems Inc
     44244 Fremont Boulevard
     Fremont, CA 94538
-    
+
     Tel:   +1 510-623-0900
+           +1 415-623-0900
     BBS:   +1 510-623-0961
 
 
@@ -31,6 +61,7 @@ AIR:
     USA
 
     Tel:   +1 800-866-1945
+           +1 800-422-7369  Tech Support
            +1 408-428-0800
     Fax:   +1 408-428-0950
 
@@ -38,12 +69,36 @@ AIR:
 Appian:
     Appian Technology Inc.
     477 N. Mathilda Ave.
-    Sunnyvale, CA 94086
+    Sunnyvale, CA 94086-3410
     USA
 
-    Tel:   +1 800-727-7426
+    Tel:   +1 800-727-7426  (Sales)
            +1 408-730-5400
+           +1 800-422-7369  (Tech Support)
     Fax:   +1 408-730-5473
+           +1 206-649-5360  (Tech Support)
+    Compuserv: GO APPIAN
+
+
+ARK Logic:
+    ARK Logic, Inc
+    3150 De La Cruz Boulevard #206
+    Santa Clara, CA 95054
+    U.S.A.
+
+    Phone: +1 408-727-7558
+    Fax:   +1 408-727-8108
+
+
+Artist Graphics:
+    Artist Graphics Inc
+    2675 Patton Rd
+    St Paul, MN 55113
+
+    Tel:   +1 612-631-7800
+           +1 800-627-8478
+    Fax:   +1 612-631-8424
+    BBS:   +1 612-631-7669
 
 
 ATI:
@@ -63,10 +118,11 @@ ATI:
     Tel:   +49 89-928-8010
     BBS:   +49 89-946-09070
 
-    Ftp:   ftp.uunet.ca
+    Ftp:   atitech.ca
+    WWW:   www.atitech.ca
 
 
-AT&T 
+AT&T:
     Tel:   +1 800-247-1212   (Tech Support)
     BBS:   +1 201-769-6397
            +1 908-796-6397   (Support BBS)
@@ -79,6 +135,7 @@ Avance Logic:
 
     Tel:   +1 510-226-9555
     Fax:   +1 510-226-8039
+    BBS:   +1 908-769-6397
 
 
 Boca:
@@ -93,6 +150,16 @@ Boca:
     BBS:   +1 407-241-1601
 
 
+BrookTree:
+    Brooktree Corporation
+    9868 Scranton Road
+    San Diego, CA 92121
+    U.S.A
+
+    Phone: +1 619-452-7580
+    Fax:   +1 619-452-1249
+
+
 Cardinal:
     Cardinal Technologies Inc.
     1827 Freedom Rd.
@@ -103,6 +170,7 @@ Cardinal:
            +1 717-293-3049
            +1 717-293-3055
            +1 800-233-0187
+    Fax:   +1 717-293-3055
     BBS:   +1 717-293-3124   (Tech Support    14.4 modem)
 
 
@@ -112,8 +180,13 @@ Chips&Tech:
     San Jose, CA 95134
 
     Tel:   +1 408-434-0600
+           +1 800-323-4477
     Fax:   +1 408-434-6452
     Telex: 272929 CHIPS UR
+
+
+Chrontel:
+    ??
 
 
 Cirrus Logic:
@@ -121,21 +194,49 @@ Cirrus Logic:
     3100 West Warren Avenue
     Freemont, CA 94538
     Tel:   +1 510-226-8300
+           +1 510-623-8300
     Fax:   +1 510-226-2250
+           +1 510-226-2180
     BBS:   +1 510-440-9080
+    ftp:   ftp.cirrus.com
 
 
 Compaq:
     Compaq Computer Corporation
-    20555 S.H. 249
-    Houston, TX 77070
+    PO Box 692000
+    Houston, TX 77269-2000
 
-    Tel:   +1 713-370-0670  
+    Tel:   +1 713-370-0670
            +1 800-345-1518  (Tech Support)
            +1 800-888-5858
     BBS:   +1 713-378-1418
-
     Ftp:   ftp.compaq.com
+    WWW:   www.compaq.com
+
+
+Cornerstone:
+    Cornerstone Imaging, Inc.
+    1990 Concourse Drive
+    San Jose, CA 95131-1721
+
+    Tel:   +1 408-435-8900
+           +1 408-562-2552  Tech Support
+    BBS:   +1 408-435-8943
+
+
+Dell:
+    Dell Computer Corp.
+    9505 McGraw Avenue
+    Austin, TX 78759
+
+    Tel:   +1 800-426-5150  Sales
+           +1 800-624-9897  C.S
+           +1 800-624-9996  Tech Support
+    Fax:   +1 800-450-1329  Tech Support
+    BBS:   +1 512-728-8528
+           +1 512-338-8528
+    Ftp:   ftp.dell.com
+    WWW:   www.dell.com
 
 
 Diamond:
@@ -149,14 +250,8 @@ Diamond:
            +1 408-773-8000  (Tech Support
     BBS:   +1 408-730-1100
            +1 408-524-9301  (9600 Baud)
-
-
-Dell:
-    Dell Computer Corp.
-    9505 McGraw Avenue
-    Austin, TX 78759
-
-    Ftp:   dell1.dell.com
+    Ftp:  ftp.diamondmm.com
+    WWW:  www.diamondmm.com
 
 
 Edsun:
@@ -167,15 +262,35 @@ Edsun:
     Fax:   +1 617-894-6927
 
 
+EISA Specification:
+    BCPR Services Inc.
+    POB 11137
+    Spring, TX 77391
+    Tel:   +1 713-251-4832
+
+
 Everex:
-    Everex Microsystems
-    48431 Milmont Drive
+    Everex Systems, Inc
+    5020 Brandin Court
     Fremont, CA 94538
     USA
 
+    Phone: +1 510-498-1111 ??
     Tel:   +1 510-498-1115   (Tech Support)
            +1 415-683-2230   (Customer Services)
+    Fax:   +1 510-683-2186
     BBS:   +1 510-438-4650
+
+
+Focus:
+    Focus Information Systems Inc
+    4046 Clipper Court
+    Fremont, CA 94538
+
+    Tel:   +1 510-657-2845
+           +1 800-925-2378
+    Fax:   +1 510-657-4158
+    BBS:   +1 510-657-9451
 
 
 Genoa:
@@ -209,20 +324,27 @@ Headland:
 
 
 Hercules:
-    Hercules Computer Tech:
+    Hercules Computer Technology Inc
     3839 Spinnaker Ct.
     Fremont, CA 94538
     USA
 
     Tel:   +1 800-523-0600 (Tech Support)
-           +1 510-623-6050 (Tech Support - or 6030)
+           +1 510-623-6030 (Tech Support)
     Fax:   +1 510-623-1112
-    BBS:   +1 510-623-7449 (14400 bps) 
+    BBS:   +1 510-623-7449 (14400 bps)
            +1 510-623-7034 (9600 bps)
            +1 510-623-7142 (2400 bps)
            +49-40-65737335 (V.32bis) [a "mailbox" in Germany with files only]
 
-    Email:  71333.2532@compuserve.com  (Hercules Support, Dylan Rhodes)
+    Email: 71333.2532@compuserve.com  (Hercules Support, Dylan Rhodes)
+    Ftp:   ftp.netcom.com /pub/he/hercules
+    WWW:   www.dnai.com/~hercules
+
+
+HMC:
+    Hualon Microelactronics Co
+    ??
 
 
 IBM:
@@ -230,9 +352,28 @@ IBM:
     1000 NW 51st Street
     Boca Raton, FL 33429
     Tel:   +1 407-443-2000
+           +1 800-426-3333
+    BBS:   +1 919-517-0001
+
+    Ftp:  ftp.pcco.com                (PC Company)
+          software.watson.ibm.com     (Software)
+    WWW:  www.ibm.com
+          www.chips.ibm.com
+          www.pc.ibm.com         (PC Company)
 
 
-IIT:
+IC Designs (ICD):
+    IC Designs
+    Kirkland, WA
+    Tel:   +1 206-821-9202
+    Fax:   +1 206-820-8959
+
+
+ICS:
+    ??
+
+
+IIT: (For AGX-1x, see XTech)
     Integrated Information Technology, Inc
     2445 Mission Collage Blvd
     Santa Clara, CA 65054
@@ -244,6 +385,16 @@ IIT:
     Marlow, Buckinghamshire
     SL7 2DX
     Tel:   +44 628-890984
+
+
+Kingston:
+    Kingston Technology Corp
+    17600 Newhope St
+    Fountain Valley, CA 92708
+
+    Tel:   +1 714-435-2600
+           +1 800-835-6575
+    Fax:   +1 714-435-2699
 
 
 Matrox:
@@ -258,10 +409,27 @@ Matrox:
     BBS:   +1 514-685-6008
 
 
+Media Vision:
+    Media Vision, Inc.
+    47300 Bayside Parkway (or 3185 Laurelview Court)
+    Fremont, CA 94538
+    Tel:   +1 800-684-6699
+           +1 800-638-2807  (Tech Support)
+           +1 510-770-9905  (Tech Support)
+           +1 800-348-7116  (Main Office)
+           +1 510-770-8600  (Main Office)
+    Fax:   +1 510-770-9592
+           +1 510-770-8648
+    BBS:   +1 510-770-0968
+           +1 510-770-0527
+
+    WWW:   www.mediavis.com
+
+
 Metheus:
     Metheus Corp.
     1600 N.W. Compton Dr.
-    Beaverton, OR 97006
+    Beaverton, OR 97006-1550
     USA
 
     Tel:   +1 800-638-4387
@@ -276,6 +444,22 @@ MaxLogic:
 
     Tel:   +1 415-683-2684
            +1 415-490-4199  (Tech Support)
+
+
+MUSIC:
+    MUSIC Semiconducters
+    1150 Academy Park Loop, Suite 202
+    Colorado Springs, CO 80910
+    U.S.A
+
+    Tel:   +1 719-570-1550
+           +1 800-933-1550
+    Fax:   +1 719-570-1555
+
+
+MXIC:
+    ??
+
 
 National Volante:
     National Volante Inc.
@@ -296,7 +480,12 @@ NCR:
     Colorado Springs, CO 80916
 
     Tel:   +1 719-596-5795
-           +1 316-688-8529 (Tech Support)
+           +1 316-688-8529  (Tech Support)
+           +1 800-543-9935  Video chip questions
+    BBS:   +1 719-596-1649
+
+    ftp:  ftp.ncr.com [192.127.252.6]
+    WWW:  www.ncr.com
 
 
 Number Nine:
@@ -310,14 +499,30 @@ Number Nine:
     Fax:   +1 617-674-2919
     BBS:   +1 617-862-7502
 
+    Ftp:   ftp.nine.com
+    WWW:   www.nine.com
+
+
+NVidia:
+    NVidia Corporation
+
+    WWW:   www.nvidia.com
+
 
 OAK:
+    Oak technology, Inc
+    139 Kifer Court
+    Sunnyvale, CA 94086
+    U.S.A
+
+    Phone: +1 408-737-0888
+    Fax:   +1 408-737-9838
     BBS:   +1 408-524-9014
            +1 510-657-9451 ??
 
 
 Orchid:
-    Orchid Technology
+    Orchid Technology Inc
     45365 Northport Loop West
     Fremont, CA  94538
 
@@ -342,6 +547,15 @@ Paradise:
     See Western Digital
 
 
+PCI SIG:
+    PCI Special Interestr Group:
+    M/S JF2-51
+    5200 N.E. Elam Young Parkway
+    Hillsboro, Oregon 97124-6497
+    Tel:   +1 503-696-6111
+           +1 800-433-5177
+
+
 Radius:
     Radius, Inc.
     1710 Fortune Drive
@@ -350,14 +564,26 @@ Radius:
 
 
 Realtek:
+    Realtek Semiconductor CO., LTD
     Tel:   +1 800-521-2471
            +1 215-387-6055
+
+    [Taiwan]
+    1F, No 11, Industry E. Rd. IX
+    Science-Based Industrial Park,
+    Hsinchu, 300 Taiwan, R. O. C.
+    Tel:   +886 35-780211
+    Fax    +886 35-776047
+
+    Email:  akira@realtek.com.tw
+    WWW:    realtek.com.tw
+
 
 
 S3:
     S3, Incorporated
     2933 Bunker Hill Lane, Suite 100
-    Santa Clara, CA 95054  
+    Santa Clara, CA 95054
 
        or ???
 
@@ -368,6 +594,7 @@ S3:
     Tel:   +1 408-986-8144
            +1 408-980-5400
     Fax:   +1 408-980-5444
+    BBS:   +1 408-970-3719
 
 
 SGS-Thomson:
@@ -378,6 +605,21 @@ SGS-Thomson:
     Fax:   +1 408-452-0218
 
 
+Sierra:
+    Sierra Semiconductor Corporation
+    2075 North Capitol Avenue
+    San Jose, CA 95132
+    Tel:   +1 408-263-9300
+    FAX:   +1 408-263-3337
+
+    [Holland]
+    Sierra Semiconductor B.V.
+    Bruistensingel 242
+    5232 AD, s Hertogenbosch
+    Tel:   +31 73-408888
+    FAX:   +31 73-423155
+
+
 Sigma:
     Sigma Designs Inc.
     47900 Bayside Pkwy.
@@ -386,6 +628,7 @@ Sigma:
     Tel:   +1 800-845-8086
            +1 510-770-0100
     Fax:   +1 510-770-2640
+    BBS:   +1 510-770-0111
 
 
 SPEA:
@@ -397,6 +640,14 @@ SPEA:
     Fax:   +49 8151-266-150
     BBS:   +49 8151-266-241  (2400-14400)
            +49 8151-266-297  (300-2400)
+
+    [England]
+    SPEA Software AG
+    Kingston House, Goodsons Mews
+    Wellington House, Thame
+    Oxon OX9 3BX
+    Tel:   +44 844 261886
+    Fax:   +44 844 261714
 
 
 Spider:
@@ -416,8 +667,16 @@ STB:
     Richardson, TX 75085
 
     Tel:   +1 214-234-8750
+           +1 800-234-4334
+          +33 144-647685
+          +44 181-897-1003   (UK)
+    Fax:   +1 214-234-1306
+          +33 144-647687     (France)
+          +44 181-897-1006   (UK)
     BBS:   +1 214-437-9615
+          +44 181-897-1008   (UK)
 
+    Ftp:   stb.com
 
 Targa:
     Truevision, Inc.
@@ -430,6 +689,12 @@ Targa:
                                      "FAX-Back" line ??
 
 
+Toshiba:
+    Tel:   +1 800-999-4273
+    BBS:   +1 714-837-4408
+
+
+
 Trident:
     Trident Microsystems, Inc
     205 Ravendale, Dr
@@ -439,6 +704,23 @@ Trident:
            +1 415-691-9211
     Fax:   +1 415-691-9260
     BBS:   +1 415-691-1016
+
+
+
+Truevision:
+    Fax:   +1 800-SAY-COLOR  (800-729-2656)  TS Presales Info Faxback
+           +1 317-577-8788   (Outside US)
+           +1 317-576-7770   Tech. Suport Fax:
+
+    BBS:   +1 317-577-8777
+
+    Email:  support@truevision.com    (Tech. support)
+
+    World Wide Web:      www.truevision.com
+    ftp:                 ftp.truevision.com
+    America Online:      Rasterhelp
+    Compuserve:          Go Truevision
+
 
 
 Tseng:
@@ -466,20 +748,43 @@ ULSI:
     Fax:   +1 408-943-0106
 
 
-Weitek:
-    Weitek Corp
-    Tel:   +1 408-738-8400
-    Fax:   +1 408-738-1185
+UMC:
+    United Microelectronics Corporation
+    8F, No. 233-1, Bao Chiao Road
+    Hsin Tien, Taipei County
+    Taiwan, R.O.C.
+    Tel:   +886 2-918-1589
+    Fax:   +886 2-918-0188
+                2-918-0068
+
+    United Microelectronics (Europe) B.V
+    Hoekenroede 2
+    1102 Br Amsterdam Zuidoost
+    The Netherlands
+    Tel:   +31 20-697-0766
+    Fax:   +31 20-697-7826
+    Telex: 11677 UMC NL
+
 
 
 VESA:
     Video Electronic Standards Association
-    Suite 360
     2150 North First Street, Suite 440
     San Jose, CA 95131-2020
 
     Tel:   +1 408-435-0333
     Fax:   +1 408-435-8225
+
+
+
+Weitek:
+    Weitek Corporation
+    1060 East Arques Avenue
+    Sunnyvale, CA 94086
+    Tel:   +1 408-738-8400
+    Fax:   +1 408-738-1185
+    BBS:   +1 408-522-7517
+
 
 
 Western Digital:
@@ -491,11 +796,23 @@ Western Digital:
            +1 800-832-4778   (Tech Support)
            +44-372-360387   (UK)
     Fax:   +1 712-932-6498
-    BBS:   +1 714-753-1234   (2400 baud) 
-           +1 714-753-1068   (9600 baud) 
+    BBS:   +1 714-753-1234   (2400 baud)
+           +1 714-753-1068   (14400 baud)
            +33 1-69-85-3914  (France)
-           +44 372360387     (England)
+           +44 372-360387    (England)
            +49 89-922006-60  (Germany)
+
+    Ftp:   ftp.wdc.com
+    WWW:   www.wdc.com
+
+
+Xtech: (A subsidiary of IIT)
+    Xtechnology, Inc
+    4701 Patrick Henry Dr., Bldg. 14
+    Santa Clara, CA 95054
+    U.S.A.
+    Tel: +1 408-986-5000
+    Fax: +1 408-986-5015
 
 
 ZyMOS:

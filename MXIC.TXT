@@ -1,11 +1,18 @@
 MX 86000   512K, 800x600x256c/1024x768x16c
-MX 86010   1MB, 1024x768x26colors
+MX 86010   1MB, 1024x768x256colors
 
+
+Support chips:
+MX8602   Clock chip. Supplies 25.175, 28.322, 40,44.9, 14.3, 16.3, 36, 65 MHz
+
+
+3C4h index 26h (R/W):
+bit   0  Set for MX86000, clear for MX86010
 
 3C4h index 30h-33h (R/W):  Scratch
 Note: used by MXIC utilities to store the old IRQ 2 interrupt address.
 
-3C4h index 34h (R/W): 
+3C4h index 34h (R/W):
 bit 0-1  Monitor type: 0=VGA, 1=8514A, 2=NEC 3D, 3=NEC 4D
 
 3C4h index 65h (R/W):
@@ -23,7 +30,13 @@ bit 2-3  Video RAM installed: 0=256k, 1=512k, 2=1M
 
 3C4h index C3h (R/W):
 bit   2  Set to enable banked access via index C5h.
+      3  If set doubles image horizontally
       7  Bus width?. 0=8 bit, 1=16 bit.
+
+3C4h index C4h (R/W):
+bit   0  Clock Select bit 2 (bits 0-1 are in 3C2h/3CCh bits 2-3)
+      3  Select Memory Clock for Video Clock ?
+    6,7  Disables display if set
 
 3C4h index C5h (R/W):  Bank register
 bit 0-3  Write bank in 64k blocks.
@@ -32,12 +45,23 @@ bit 0-3  Write bank in 64k blocks.
 3C4h index F0h (R/W):
 bit 0-1  3 if interlaced, 0 if not.
       3  If clear the display will wrap at 256K.
+      4  If set display width or scanline width is slightly wrong ?
+      7  Disables display if set
 
 3C4h index F1h (R/W):
-bit   0  Display Start Address bit 16 (bit 17 may be in bit 1 ??)
+bit 0-1  Display Start Address bit 16-17
 
 3C4h index F2h (R/W):
 bit   7  Set if IRQ2 enabled, clear if not.
+
+3C4h index F3h (R/W):
+bit   0  Scrambles display if set ?
+      1  Vertical overflow ?
+      2  Disables display if set
+      3  If set the same (random ?) line is repeated down the entire screen
+      5  Disables display if set
+      6  If set the same (random ?) line is repeated down the entire screen
+      7  If set image looses vertical sync ??
 
 Apparently the sequencer (3C4/5h) does not decode bit 3-4 of the index, thus
 index 7 is duplicated at 0Fh, 17h and 1Fh.

@@ -1,463 +1,10 @@
 
-const
-  ATTR= $3C0;
-  SEQ = $3C4;
-  GRC = $3CE;
-
 type
-  str10=string[10];
-
-  mmods=(_text,
-         _text2,
-         _text4,
-         _herc,   {Hercules mono, 4 "banks" of 8kbytes}
-         _cga1,   {CGA 2 color, 2 "banks" of 16kbytes}
-         _cga2,   {CGA 4 color, 2 "banks" of 16kbytes}
-         _pl1 ,   {plain mono, 8 pixels per byte}
-         _pl1e,   {mono odd/even, 8 pixels per byte, two planes}
-         _pl2 ,   {4 color odd/even planes}
-         _pk2 ,   {4 color "packed" pixels 4 pixels per byte}
-         _pl4 ,   {std EGA/VGA 16 color: 4 planes, 8 pixels per byte}
-         _pk4 ,   {ATI mode 65h two 16 color pixels per byte}
-         _p8  ,   {one 256 color pixel per byte}
-         _p15 ,   {Sierra 15 bit}
-         _p16 ,   {Sierra 16bit/XGA}
-         _p24 ,   {RGB 3bytes per pixel}
-         _p32 );  {RGBa 3+1 bytes per pixel }
-
-  modetype=record
-             md,xres,yres,bytes:word;
-             memmode:mmods;
-           end;
-
-  CHIPS=(__EGA,__VGA,__chips451,__chips452,__chips453,__paradise,__video7
-        ,__ET3000,__ET4000,__tridBR,__tridCS,__trid89,__everex,__ati1,__ati2
-        ,__genoa,__oak,__cirrus,__aheadA,__aheadB,__ncr,__yamaha,__poach
-        ,__s3,__al2101,__mxic,__vesa,__realtek,__p2000,__cir54,__cir64
-        ,__Weitek,__WeitekP9,__xga,__compaq,__iitagx,__ET4w32,__oak87,__atiGUP
-        ,__UMC,__HMC,__xbe,__none);
-
-  CursorType=Array[0..31] of longint;  {32 lines of 32 pixels}
+  str10 = string[10];
 
 const
 
-  header:array[CHIPS] of string[14]=
-	 ('EGA','VGA','Chips&Tech','Chips&Tech','Chips&Tech'
-	 ,'Paradise','Video7','ET3000','ET4000','Trident','Trident'
-         ,'Trident','Everex','ATI','ATI','Genoa','Oak','Cirrus','Ahead'
-         ,'Ahead','NCR','Yamaha','Poach','S3','AL2101','MXIC','VESA'
-         ,'Realtek','PRIMUS','Cirrus54','Cirrus64','Weitek','WeitekP9'
-         ,'XGA','COMPAQ','IITAGX','ET4000W32','Oak','ATI','UMC','HMC'
-         ,'XBE','');
-
-
-const   {Short name for chip families}
-  chipnam:array[chips] of string[8]=
-        ('EGA','VGA','CT451','CT452','CT453','WD','Video7'
-        ,'ET3000','ET4000','TR8800BR','TR8800CS','TR8900','Everex','ATI18800'
-        ,'ATI28800','Genoa','OAK','Cirrus','Ahead A','Ahead B','NCR','Yamaha','Poach'
-        ,'S3','ALG','MXIC','VESA','Realtek','Primus','CL54xx','CL64xx'
-        ,'Weitek','P9000','XGA','Compaq','IIT','ET4/W32','OAK 87','Mach 32'
-        ,'UMC','HMC','XBE','?');
-
-
-
-const
-
-  {DAC types}
-
-  _dac0     =0;   {No DAC (MDA/CGA/EGA ..}
-  _dac8     =1;   {Std VGA DAC 256 cols.}
-  _dac15    =2;   {Sierra 32k DAC}
-  _dac16    =3;   {Sierra 64k DAC}
-  _dacss24  =4;   {Sierra?? 24bit RGB DAC}
-  _dacatt   =5;   {ATT 20c490/1/2  15/16/24 bit DAC}
-  _dacADAC1 =6;   {Acumos ADAC1  15/16/24 bit DAC}
-
-  _dacalg   =7;   {Avance Logic  16 bit DAC}
-  _dacSC24  =8;   {Sierra SC15025 24bit DAC}
-  _dacCL24  =9;   {Cirrus Logic 24bit RAMDAC for CL542x series}
-  _dacMus   =10;  {Music MU9c1740 24bit DAC}
-  _dacUnk9  =11;
-  _dacBt484 =12;
-
-
-  _dacCEG   =13;  {Edsun CEG DAC}
-
-
-  {Flags for special features}
-
-  ft_cursor = 1;   {Has hardware cursor}
-  ft_blit   = 2;   {Can do BitBLTs}
-  ft_line   = 4;   {Can do lines}
-  ft_rwbank = 8;   {Suports seperate R/W banks}
-
-
-
-  (* Chip versions *)
-
-  VS_VBE      =   90;
-  VS_XBE      =   91;
-
-  CL_Unk54    =  100;
-  CL_AVGA1    =  101;
-  CL_AVGA2    =  102;
-  CL_GD5401   =  103;
-  CL_GD5402   =  104;
-  CL_GD5402r1 =  105;
-  CL_GD5420   =  106;
-  CL_GD5420r1 =  107;
-  CL_GD5422   =  108;
-  CL_GD5424   =  109;
-  CL_GD5426   =  110;
-  CL_GD5428   =  111;
-  CL_GD543x   =  112;
-
-  CL_GD6205   =  115;
-  CL_GD6215   =  116;
-  CL_GD6225   =  117;
-  CL_GD6235   =  118;
-
-  CL_Unk64    =  120;
-  CL_GD5410   =  121;
-  CL_GD6410   =  122;
-  CL_GD6412   =  123;
-
-  CL_GD6420   =  124;
-  CL_GD6440   =  125;
-
-  WD_PVGA1A   =  130;
-  WD_90c00    =  131;
-  WD_90c10    =  132;
-  WD_90c11    =  133;
-  WD_90c20    =  134;
-  WD_90c20A   =  135;
-  WD_90c22    =  136;
-  WD_90c24    =  137;
-  WD_90c26    =  138;
-  WD_90c30    =  139;
-  WD_90c31    =  140;
-  WD_90c33    =  141;
-
-  CT_Unknown  =  160;
-  CT_450      =  161;
-  CT_451      =  162;
-  CT_452      =  163;
-  CT_453      =  164;
-  CT_455      =  165;
-  CT_456      =  166;
-  CT_457      =  167;
-  CT_65520    =  168;
-  CT_65530    =  169;
-  CT_65510    =  170;
-
-  CL_old_unk  =  180;
-  CL_V7_OEM   =  181;
-  CL_GD5x0    =  182;
-  CL_GD6x0    =  183;
-
-  NCR_Unknown =  190;
-  NCR_77c21   =  191;
-  NCR_77c22   =  192;
-  NCR_77c22e  =  193;
-  NCR_77c22ep =  194;
-
-  OAK_Unknown =  200;
-  OAK_037     =  201;
-  OAK_057     =  202;
-  OAK_067     =  203;
-  OAK_077     =  204;
-  OAK_083     =  205;
-  OAK_087     =  206;
-
-  RT_Unknown  =  210;
-  RT_3103     =  211;
-  RT_3105     =  212;
-  RT_3106     =  213;
-
-  S3_Unknown  =  220;
-  S3_911      =  221;
-  S3_924      =  222;
-  S3_801AB    =  223;
-  S3_805AB    =  224;
-  S3_801C     =  225;
-  S3_805C     =  226;
-  S3_801D     =  227;
-  S3_805D     =  228;
-  S3_928C     =  229;
-  S3_928D     =  230;
-  S3_928E     =  231;
-  S3_928PCI   =  232;
-
-  TR_Unknown  =  240;
-  TR_8800BR   =  241;
-  TR_8800CS   =  242;
-  TR_8900B    =  243;
-  TR_8900C    =  244;
-  TR_9000     =  245;
-  TR_8900CL   =  246;
-  TR_9000i    =  247;
-  TR_8900CXr  =  248;
-  TR_LCD9100B =  249;
-  TR_GUI9420  =  250;
-  TR_LX8200   =  251;
-  TR_LCD9320  =  252;
-  TR_9200CXi  =  253;
-
-  AH_A        =  260;
-  AH_B        =  261;
-
-  AL_2101     =  270;
-
-  CPQ_Unknown =  280;
-  CPQ_IVGS    =  281;
-  CPQ_AVGA    =  282;
-  CPQ_AVPORT  =  283;
-  CPQ_QV1024  =  284;
-  CPQ_QV1280  =  285;
-
-  MX_86000    =  290;
-  MX_86010    =  291;
-
-  GE_5100     =  301;
-  GE_5300     =  302;
-  GE_6100     =  303;
-  GE_6200     =  304;
-  GE_6400     =  305;
-
-  PR_2000     =  310;
-
-  IIT_AGX     =  320;
-
-  ET_4Unk     =  330;
-  ET_3000     =  331;
-  ET_4000     =  332;
-  ET_4W32     =  333;
-  ET_4W32i    =  334;
-  ET_4W32p    =  335;
-
-  V7_Unknown  =  340;
-  V7_VEGA     =  341;
-  V7_208_13   =  342;
-  V7_208A     =  343;
-  V7_208B     =  344;
-  V7_208CD    =  345;
-  V7_216BC    =  346;
-  V7_216D     =  347;
-  V7_216E     =  348;
-  V7_216F     =  349;
-
-  WT_5086     =  361;
-  WT_5186     =  362;
-  WT_5286     =  363;
-
-  YA_6388     =  370;
-
-  XGA_org     =  380;
-  XGA_NI      =  381;
-
-  UMC_408     =  390;
-
-  ATI_Unknown =  400;
-  ATI_EGA     =  401;
-  ATI_18800   =  402;
-  ATI_18800_1 =  403;
-  ATI_28800_2 =  404;
-  ATI_28800_4 =  405;
-  ATI_28800_5 =  406;
-  ATI_GUP_3   =  407;
-  ATI_GUP_6   =  408;
-  ATI_GUP_AX  =  409;
-  ATI_GUP_LX  =  410;
-
-  HMC_304     =  420;
-
-
-type
-  charr =array[1..255] of char;
-  chptr =^charr;
-  intarr=array[1..100] of word;
-
-
-
-
-  {VESA VBE (VGA) record definitions}
-  _vbe0=record
-          sign  :longint;       {Must be 'VESA'}
-          vers  :word;          {VBE version.}
-          oemadr:chptr;
-          capab :longint;
-          model :^intarr;       {Ptr to list of modes}
-          mem   :byte;          {#64k blocks}
-          xx:array[0..499] of byte;   {Buffer is too large, as some cards
-                                         can return more than 256 bytes}
-        end;
-
-
-  _vbe1=record
-          attr  :word;
-          wina  :byte;
-          winb  :byte;
-          gran  :word;
-          winsiz:word;
-          sega  :word;
-          segb  :word;
-          pagefunc:pointer;
-          bytes :word;
-          width :word;
-          height:word;
-          charw :byte;
-          charh :byte;
-          planes:byte;
-          bits  :byte;   {bits per pixel}
-          nbanks:byte;
-          model :byte;
-          banks :byte;
-          images:byte;
-          res   :byte;
-          redinf:word;   {red   - low byte = #bits, high byte = start pos}
-          grninf:word;   {green - }
-          bluinf:word;   {blue  - }
-          resinf:word;
-
-          x:array[byte] of byte;    {might get trashed by 4F01h}
-        end;
-  _vbe1p=^_vbe1;
-
-
-  {VESA VXE (XGA) record definitions}
-  _xbe0=record
-          sign:longint;    {must be 'VESA'}
-          vers:word;
-          oemadr:chptr;
-          capab:longint;
-          xgas:word;
-          xx:array[1..240] of byte;
-        end;
-
-  _xbe1=record
-          oemadr:chptr;
-          capab:longint;
-          romadr:longint;
-          memreg:longint;
-          iobase:word;
-          vidadr:longint;  {32bit address of video memory}
-          adr4MB:longint;
-          adr1MB:longint;
-          adr64k:longint;
-          adroem:longint;
-          sizoem:word;
-          modep :^intarr;
-          memory:word;
-          manid :longint;
-          xx:array[1..206] of byte;
-        end;
-
-  _xbe2=record
-          attrib:word;
-          bytes :word;
-          pixels:word;
-          lins  :word;
-          charw :byte;
-          charh :byte;
-          planes:byte;
-          bits  :byte;
-          model :byte;
-          images:byte;
-          redinf:word;   {red   - low byte = #bits, high byte = start pos}
-          grninf:word;   {green - }
-          bluinf:word;   {blue  - }
-          resinf:word;
-          xx:array[1..234] of byte;
-        end;
-
-  _AT0=record
-         SWvers:word;  {SW version}
-         vid_sys,         {Number of video systems}
-         cur_vid:word;    {Currently selected video system (1..)}
-         curtime:longint; {Date & time of the test}
-       end;
-       {This record followed by: (Email),(Name&Address),(Video desc)
-                    ,(System),(modenames)}
-
-  _AT2=record
-         mode:word;
-        Mmode:mmods;
-       pixels,
-         lins,
-        bytes,
-         crtc,
-         vseg:word;
-      Cpixels,
-        Clins,
-       Cbytes,
-        Cvseg:word;
-       CMmode:mmods;
-      ChWidth,
-     ChHeight,
-      ExtPixf,
-      ExtLinf:byte;
-         Vclk,
-         Hclk,
-         Fclk:real;
-        iLace:boolean;
-         Flag:byte;
-       end;
-       {This record followed by: (Comment), (reg values)}
-
-  _AT3=record
-         mode:word;
-        Mmode:mmods;
-         Flag:byte;
-       end;
-       {This record followed by: (Comment)}
-
-  _ATff=record
-          int10,
-          int6D,
-          m4a8,   {0:4A8h}
-          fnt8h,
-          fnt8l,
-          fnt14,
-          fnt14x9,
-          fnt16,
-          fnt16x9:word;
-          Base:word;
-          size:byte;
-        end;
-
-const
-
-  novgamodes=14;
-  stdmodetbl:array[1..novgamodes] of modetype=
-	    ((md: 0;xres: 40;yres: 25;bytes: 80;memmode:_TEXT)
-	    ,(md: 1;xres: 40;yres: 25;bytes: 80;memmode:_TEXT)
-	    ,(md: 2;xres: 80;yres: 25;bytes:160;memmode:_TEXT)
-	    ,(md: 3;xres: 80;yres: 25;bytes:160;memmode:_TEXT)
-	    ,(md: 4;xres:320;yres:200;bytes: 80;memmode:_cga2)
-	    ,(md: 5;xres:320;yres:200;bytes: 80;memmode:_cga2)
-	    ,(md: 6;xres:640;yres:200;bytes: 80;memmode:_cga1)
-	    ,(md:13;xres:320;yres:200;bytes: 40;memmode:_pl4)
-	    ,(md:14;xres:640;yres:200;bytes: 80;memmode:_pl4)
-	    ,(md:15;xres:640;yres:350;bytes: 80;memmode:_pl1)
-	    ,(md:16;xres:640;yres:350;bytes: 80;memmode:_pl4)
-	    ,(md:17;xres:640;yres:480;bytes: 80;memmode:_pl1)
-	    ,(md:18;xres:640;yres:480;bytes: 80;memmode:_pl4)
-	    ,(md:19;xres:320;yres:200;bytes:320;memmode:_p8));
-
-  colbits:array[mmods] of integer=
-               (0,0,0,1,1,1,1,2,2,2,4,4,8,15,16,24,24);
-  modecols:array[mmods] of longint=
-               (0,0,0,2,2,2,2,4,4,4,16,16,256,32768,65536,16777216,16777216);
-
-  mdtxt:array[mmods] of string[20]=('Text','2 color Text','4 color Text'
-                ,'Hercules','CGA 2 color','CGA 4 color','Monochrome','2 colors planar'
-                ,'4 colors planar','4 colors packed','16 colors planar','16 colors packed'
-                ,'256 colors packed','32K colors','64K colors'
-                ,'16M colors','16M colors');
-
-  mmodenames:array[mmods] of string[4]=('TXT ','TXT2','TXT4','HERC','CGA1','CGA2'
-              ,'PL1 ','PL1E','PL2 ','PK2 ','PL4 ','PK4 ','P8  ','P15 ','P16 ','P24 ','P32 ');
+  hx:array[0..15] of char='0123456789ABCDEF';
 
   Debug:boolean=false;      {If set step through video tests one by one}
   Auto_test:boolean=false;  {If set run tests automatically}
@@ -466,111 +13,151 @@ const
   {Keys:}
   Ch_Cr       =  $0D;
   Ch_Esc      =  $1B;
+  Ch_F1       = $13B;
+  Ch_F2       = $13C;
+  Ch_F3       = $13D;
+  Ch_F4       = $13E;
+  Ch_F5       = $13F;
+  Ch_F6       = $140;
+  Ch_F7       = $141;
+  Ch_F8       = $142;
+  Ch_Home     = $147;
   Ch_ArUp     = $148;
+  Ch_PgUp     = $149;
   Ch_ArLeft   = $14B;
   Ch_ArRight  = $14D;
+  Ch_End      = $14F;
   Ch_ArDown   = $150;
-  Ch_PgUp     = $149;
   Ch_PgDn     = $151;
   Ch_Ins      = $152;
   Ch_Del      = $153;
 
 
-var
+    {Standard segment defines}
+  Seg0000 = $0000;    {Interupt table}
+  Seg0040 = $0040;    {BIOS data segment}
+  SegA000 = $A000;    {Graphics Video buffer}
+  SegA800 = $A800;    {Graphics Video buffer - upper half}
+  SegB000 = $B000;    {Mono Text mode buffer}
+  SegB800 = $B800;    {Color Text mode buffer}
+  SegC000 = $C000;    {BIOS ROM segment}
 
-  vids:word;
-  vid:array[1..10] of
-      record
-        chip:chips;
-        id:word;             {instance}
-        IOadr:word;          {I/O adr}
-        Xseg:word;
-        Phadr:longint;
-        version:word;        {version}
-        subver:word;         {Subversion}
-        DAC_RS2,DAC_RS3:word;{These address bits are fed to the
-                              RS2 and RS3 pins of the palette chip}
-        dac:word;            {The dac type}
-        dacname:string[20];  {The Name of the DACtype}
-        mem:word;            {#kilobytes of video memory}
-        features:word;       {Flags for special features}
-        sname:string[8];     {Short chip family name}
-        name:string[40];     {Full chip name}
-      end;
+  {Gamma correction types}
+  GAM_None  =  0;    {No Gamma correction}
+  GAM_CanDo =  1;    {}
+  GAM_LeftJ =  2;    {left justify Red&Blue 1bit each}
+  GAM_Left8 =  4;    {Left justify to 8bits}
+  GAM_8bit  =  8;    {DAC Gamma registers are 8bit (not 6)}
 
+type
+  CursorType=Array[0..31] of longint;  {32 lines of 32 pixels}
+  charr =array[1..255] of char;
+  chptr =^charr;
 
 
 var
   rp:registers;
 
   video:string[20];
-  dacname:string[20];
   _crt:string[20];
   secondary:string[20];
 
   planes:word;     {number of video planes}
 
-  nomodes:word;
-  modetbl:array[1..50] of modetype;
+
+  dacHWcursor:boolean;   {True if we use the DAC cursor, rather than the VGA one}
 
 
-
-  dotest:array[CHIPS] of boolean;
-
-
-  CHIP:CHIPS;
-  mm:word;           {Video memory in kilobytes}
   vseg:word;         {Video buffer base segment}
-  version:word;      {Version of chip or interface}
-  subvers:word;      {Subversion, for Unknown versions}
-  IOadr:word;        {I/O select address (ATI, XGA..)}
-  instance:word;     {ID for XGA and other multi board systems.}
-  features:word;     {Flags for special features   (ft_*) }
   biosseg:word;
-  DAC_RS2,
-  DAC_RS3:word;      {These address bits are fed to the
-                      RS2 and RS3 pins of the palette chip}
-  dactype:word;
-  name:string[40];
 
   curmode:word;      {Current mode number}
-  memmode:mmods;     {current memory mode}
+  memmode:byte;      {current memory mode}
   crtc:word;         {I/O address of CRTC registers}
   pixels:word;       {Pixels in a scanline in current mode}
   lins:word;         {lines in current mode}
   bytes:longint;     {bytes in a scanline}
 
-  force_mm:word;     {Forced memory size in Kbytes}
+  force_chip:byte;
+  force_mm:word;       {Forced memory size in Kbytes}
+  force_version:word;  {Forced chip version}
+  clocktest:boolean;   {Set false to disable clocktesting.}
+
 
   extpixfact:word;  {The number of times each pixel is shown}
   extlinfact:word;  {The number of times each scan line is shown}
   charwid   :word;  {Character width in pixels}
   charhigh  :word;  {Character height in scanlines}
-  calcpixels,
-  calclines,
-  calcvseg,
+  calcvseg:word;
+  calcpixels,       {Calculated displayed pixels per scanline}
+  calclines,        {    "      displayed scanlines}
+  calchtot,         {    "      total pixels/scanline}
+  calcvtot,         {    "      total lines/frame}
+  calchblks,        {    "      Hor. Blanking Start}
+  calchblke,        {    "      Hor Blanking End (see hblkmask)}
+  calchrtrs,        {    "      Hor Retrace Start}
+  calchrtre,        {    "      Hor Retrace End (see hrtrmask)}
+  calcvblks,        {    "      Vert Blanking Start}
+  calcvblke,        {    "      Vert Blanking End (see vblkmask)}
+  calcvrtrs,        {    "      Vert Retrace Start}
+  calcvrtre,        {    "      Vert Retrace End (see vrtrmask)}
+  hblkmask,         {    "      }
+  hrtrmask,         {    "      }
+  vblkmask,         {    "      }
+  vrtrmask,         {    "      }
   calcbytes:word;
-  calcmmode:mmods;
+  calcmmode:byte;
 
 
-  vclk,hclk,fclk:real;
+  vclk,hclk,fclk:longint;  {Pixel (kHz), Line (Hz) & Frame (mHz) clocks}
   ilace:boolean;
 
 
+  daccomm:word;      {The result of the last dac2comm}
 
 
-function getkey:word;             {Waits for a key, and returns the keyID}
-function peekkey:word;            {Checks for a key, and returns the keyID}
+  BWlow,BWhigh:longint;  {Bandwidth requirement - low & high in Kbytes/sec}
 
-procedure pushkey(k:word);        {Simulates a keystroke}
 
-function strip(s:string):string;       {strip leading and trailing spaces}
-function upstr(s:string):string;       {convert a string to upper case}
-function istr(w:longint):str10;
-function hex2(w:word):str10;
-function hex4(w:word):str10;
-function dehex(s:string):word;
+  (* Interface declarations for functions. In DEFVGA.PAS *)
 
+
+  (* Utility & User interfrace functions*)
+procedure disable; {Disable interupts}
+
+procedure enable;  {Enable interrupts}
+
+function gtstr(var cp:char):string;
+
+function getkey:word;              {Waits for a key, and returns the keyID}
+
+function peekkey:word;             {Checks for a key, and returns the keyID}
+
+procedure pushkey(k:word);         {Simulates a keystroke}
+
+  {Pretend the last key was pushed again}
+procedure repeatkey;
+
+function strip(s:string):string;   {strip leading and trailing spaces}
+
+function upstr(s:string):string;   {convert a string to upper case}
+
+function istr(w:longint):str10;    {convert number to string}
+
+function dehex(s:string):longint;  {Hex string to number}
+
+function hex2(w:word):str10;       {convert number to 2digit hex string}
+
+function hex4(w:word):str10;       {convert number to 4digit hex string}
+
+function hex8(w:longint):str10;       {convert number to 4digit hex string}
+
+procedure swapbyte(var a,b:byte);  {Swap the 2 bytes}
+
+function clipstr(var s:string):string;   {Cuts & returns the first non-space
+                                          substring from s}
+
+  {BIOS & lowlevel I/O functions}
 
 procedure vio(ax:word);         {INT 10h reg ax=AX. other reg. set from RP
                                  on return rp.ax=reg AX}
@@ -578,15 +165,36 @@ procedure vio(ax:word);         {INT 10h reg ax=AX. other reg. set from RP
 procedure viop(ax,bx,cx,dx:word;p:pointer);
                                 {INT 10h reg AX-DX, ES:DI = p}
 
-function inp(reg:word):byte;     {Reads a byte from I/O port REG}
+function inp(reg:word):byte;      {Reads a byte from I/O port REG}
+
+function inpw(reg:word):word;     {Reads a word from I/O port REG}
+
+function inpl(reg:word):longint;  {Reads a DWORD from I/O port REG}
 
 procedure outp(reg,val:word);    {Write the low byte of VAL to I/O port REG}
 
 procedure outpw(reg,val:word);    {Write the word byte of VAL to I/O port REG}
 
+procedure outpl(reg:word;val:longint);    {Write the word byte of VAL to I/O port REG}
+
+  {Outputs a 32bit value as a single OUT DX,EAX - requires 386 or better}
+procedure outplong(reg:word;val:longint);
+
+  {Inputs a 32bit value as a single IN EAX,DX - requires 386 or better}
+function inplong(reg:word):longint;
+
+
 function rdinx(pt,inx:word):word;       {read register PT index INX}
 
 procedure wrinx(pt,inx,val:word);       {write VAL to register PT index INX}
+
+procedure wrinx2(pt,inx,val:word);       {write VAL to register PT index INX}
+
+procedure wrinx2m(pt,inx,val:word);       {write VAL to register PT index INX}
+
+procedure wrinx3(pt,inx:word;val:longint);       {write VAL to register PT index INX}
+
+procedure wrinx3m(pt,inx:word;val:longint);       {write VAL to register PT index INX}
 
 procedure modinx(pt,inx,mask,nwv:word);  {In register PT index INX sets
                                           the bits in MASK as in NWV
@@ -596,21 +204,75 @@ procedure setinx(pt,inx,val:word);
 
 procedure clrinx(pt,inx,val:word);
 
-procedure setbank(bank:word);
+procedure modreg(reg,mask,nwv:word);  {In register PT index INX sets
+                                          the bits in MASK as in NWV
+                                          the other are left unchanged}
 
-procedure setRbank(bank:word);
+procedure setreg(reg,val:word);
 
-procedure setvstart(x,y:word);       {Set the display start to (x,y)}
+procedure clrreg(reg,val:word);
 
-function setmode(md:word):boolean;
+procedure modregw(reg,mask,nwv:word);  {In register PT index INX sets
+                                          the bits in MASK as in NWV
+                                          the other are left unchanged}
 
-procedure setdac6;
-procedure setdac8;
+procedure setregw(reg,val:word);
+
+procedure clrregw(reg,val:word);
+
+  {Lowlevel DAC stuff}
+function trigdac:word;  {Reads $3C6 4 times}
+
+procedure setDACstd;
+procedure setdac8(on:boolean);
 function setdac15:boolean;
 function setdac16:boolean;
 function setdac24:boolean;
+function setdac32:boolean;
 
-procedure vesamodeinfo(md:word;vbe1:_vbe1p);
+function setDACgamma(on:boolean):word;
+
+
+function setDACpage(index:word):word;
+
+procedure clearDACpage;
+
+function rdDACreg(index:word):word;
+
+procedure wrDACreg(index,val:word);
+
+procedure clrDACreg(index,val:word);
+
+procedure setDACreg(index,val:word);
+
+procedure modDACreg(index,msk,val:word);
+
+
+function getdaccomm:word;
+
+procedure dac2comm;
+
+procedure dac2pel;
+
+
+  {Probe clocks, should really be in IDVGA ??}
+procedure findclocks;
+
+
+  {The LOG functions writes output data to both the screen and the file
+   WHATVGA.TXT, to provide a log in case of lockup}
+
+procedure openlog(scr:boolean);
+
+procedure wrlog(s:string);
+
+procedure closelog;
+
+
+
+
+
+  (* HW cursor, BitBLT, linedraw and clock function in BITBLT.PAS *)
 
 procedure setHWcurmap(VAR map:CursorType);
 
@@ -620,52 +282,64 @@ procedure setHWcurpos(X,Y:word);
 
 procedure setHWcurcol(fgcol,bkcol:longint);
 
+
+procedure setZoomWindow(Xs,Ys,Xe,Ye:word);
+
+procedure setZoomAdr(AdrX,AdrY:word);
+
+procedure ZoomOnOff(On:boolean);
+
+procedure setZoomFactor(Fx,Fy:word);
+
+procedure vesamodeinfo(md:word;var vbedata);
+
+
 procedure fillrect(xst,yst,dx,dy:word;col:longint);
 
 procedure copyrect(srcX,srcY,dstX,dstY,dx,dy:word);
 
 procedure line(x0,y0,x1,y1:integer;col:longint);
 
+procedure setclk(Nbr,divi:word);
 
-procedure dac2comm;
+function getclk(var divisor,divid:word):word;
 
-procedure dac2pel;
+function getClockFreq:longint;    {Effective pixel clock in kHz}
 
-procedure findvideo;
 
-{procedure AnalyseMode(mode:word; var pixs,lins,bytes,vseg:word;var mmode:mmods);}
 
-function FormatRgs(var b:byte):word;   {Format registers for dump}
 
-function dumpVGAregs:word;
+  (* Bank, mode and Vstart rutines, in SUPERVGA.PAS *)
 
-procedure dumpVGAregfile;
+procedure setbank(bank:word);
+
+procedure setRbank(bank:word);
+
+procedure setvstart(x,y:word);       {Set the display start to (x,y)}
+
+function setmode(md:word;clear:boolean):boolean;
+
+procedure SetTextMode;
+
+
+
+procedure SetRGBPal(inx,r,g,b:word);
 
 procedure SelectVideo(Item:word);
 
+function rgb(r,g,b:word):longint;    {Converts RGB values to pixel in the
+                                      current pixelformat }
+
+  {Returns the pixel BIT address}
+function pixeladdress(x,y:word):longint;
+
 implementation
-
-uses crt;
-
-procedure testdac;forward;
-
-
-const
-  mmmask :array[0..8] of byte=(0,0,0,0,1,3,3,7,15);
-
-  hx:array[0..15] of char='0123456789ABCDEF';
+uses idvga;
 
 
 var
 
-  spcreg:word;    {Special register offset (IIT)}
-  xgaseg:word;    {Segment address of memory mapped registers}
-  Phadr:longint;  {Physical address of video buffer}
-
-  old,curbank:word;
-
-  vgran:word;
-
+  clocktbl:array[0..31] of longint;
 
 
 procedure disable; (* Disable interupts *)
@@ -673,21 +347,24 @@ begin
   inline($fa);  (* CLI instruction *)
 end;
 
+
 procedure enable;  (* Enable interrupts *)
 begin
   inline($fb);  (* STI instruction *)
 end;
 
 
-function gtstr(var c:chptr):string;
+function gtstr(var cp:char):string;
 var x:word;
   s:string;
+  str:chptr;
 begin
+  str:=chptr(@cp);
   s:='';x:=1;
-  if c<>NIL then
-    while (x<255) and (c^[x]<>#0) do
+  if str<>NIL then
+    while (x<255) and (str^[x]<>#0) do
     begin
-      if c^[x]<>#7 then s:=s+c^[x];
+      if str^[x]<>#7 then s:=s+str^[x];
       inc(x);
     end;
   gtstr:=s;
@@ -695,20 +372,22 @@ end;
 
 const
   key_stack:word=0;    {Stored key stroke 0=none}
+  lastkey:word=0;
 
 function getkey:word;
 var c:char;
 begin
   if key_stack<>0 then
   begin
-    getkey:=key_stack;
+    lastkey:=key_stack;
     key_stack:=0;
   end
   else begin
     c:=readkey;
-    if c=#0 then getkey:=$100+ord(readkey)
-            else getkey:=ord(c);
+    if c=#0 then lastkey:=$100+ord(readkey)
+            else lastkey:=ord(c);
   end;
+  getkey:=lastkey;
 end;
 
 function peekkey:word;
@@ -722,6 +401,21 @@ var ch:char;
 begin
   key_stack:=k;
   while keypressed do ch:=readkey;
+end;
+
+  {Pretend the last key was pushed again}
+procedure repeatkey;
+begin
+  pushkey(lastkey);
+end;
+
+  {Swap the 2 bytes}
+procedure swapbyte(var a,b:byte);
+var c:byte;
+begin
+  c:=a;
+  a:=b;
+  b:=c;
 end;
 
 
@@ -747,6 +441,7 @@ begin
   istr:=s;
 end;
 
+
 function hex2(w:word):str10;
 begin
   hex2:=hx[(w shr 4) and 15]+hx[w and 15];
@@ -757,23 +452,42 @@ begin
   hex4:=hex2(hi(w))+hex2(lo(w));
 end;
 
-function dehex(s:string):word;
-var w,x:word;
+function hex8(w:longint):str10;
+begin
+  hex8:=hex4(w shr 16)+hex4(w);
+end;
+
+function dehex(s:string):longint;
+var x:word;
+    l:longint;
     c:char;
 begin
-  w:=0;
+  l:=0;
   for x:=1 to length(s) do
   begin
     c:=s[x];
     case c of
-      '0'..'9':w:=(w shl 4)+(ord(c) and 15);
+      '0'..'9':l:=(l shl 4)+(ord(c) and 15);
       'a'..'f','A'..'F':
-               w:=(w shl 4)+(ord(c) and 15 +9);
+               l:=(l shl 4)+(ord(c) and 15 +9);
     end;
   end;
-  dehex:=w;
+  dehex:=l;
 end;
 
+function clipstr(var s:string):string;   {Cuts & returns the first non-space
+                                          substring from s}
+var
+  i:integer;
+begin
+  i:=0;
+  while s[i+1]=' ' do inc(i);
+  delete(s,1,i);
+  i:=0;
+  while (i<length(s)) and (s[i+1]>' ') do inc(i);
+  clipstr:=copy(s,1,i);
+  delete(s,1,i);
+end;
 
 
 procedure vio(ax:word);         {INT 10h reg ax=AX. other reg. set from RP
@@ -800,10 +514,6 @@ begin
   inp:=reg;
 end;
 
-procedure outp(reg,val:word);    {Write the low byte of VAL to I/O port REG}
-begin
-  port[reg]:=val;
-end;
 
 function inpw(reg:word):word;    {Reads a word from I/O port REG}
 begin
@@ -811,17 +521,63 @@ begin
   inpw:=reg;
 end;
 
+function inpl(reg:word):longint;    {Reads a word from I/O port REG}
+var l:longint;
+begin
+  l:=portw[reg];
+  inpl:=l+(longint(portw[reg+2]) shl 16);
+end;
+
+  {Inputs a 32bit value as a single IN EAX,DX - requires 386 or better}
+function inplong(reg:word):longint;
+var l:longint;
+begin
+  inline($8B/$56/<reg/$66/$ED/$66/$89/$46/<l);
+  inplong:=l;
+end;
+
+procedure outp(reg,val:word);    {Write the low byte of VAL to I/O port REG}
+begin
+  port[reg]:=val;
+end;
+
 procedure outpw(reg,val:word);
 begin
   portw[reg]:=val;
 end;
 
+procedure outpl(reg:word;val:longint);    {Write the Dword of VAL to I/O port REG}
+begin
+  portw[reg]  :=val;
+  portw[reg+2]:=val shr 16;
+end;
+
+  {Outputs a 32bit value as a single OUT DX,EAX - requires 386 or better}
+procedure outplong(reg:word;val:longint);
+begin
+    {mov dx,[BP+reg] mov eax,[BP+val]  out dx,eax}
+  inline($8B/$56/<reg/$66/$8B/$46/<val/$66/$EF);
+end;
+
+
 function rdinx(pt,inx:word):word;       {read register PT index INX}
 var x:word;
 begin
-  if pt=$3C0 then x:=inp(CRTC+6);    {If Attribute Register then reset Flip-Flop}
-  outp(pt,inx);
-  rdinx:=inp(pt+1);
+  if pt=$3C0 then
+  begin
+    x:=inp(CRTC+6);    {Reset Attribute Data/Address Flip-Flop}
+    outp($3C0,inx and $DF);    {Clear bit 5 of index}
+    for x:=1 to 10 do;
+    rdinx:=inp($3C1);    {delay}
+    x:=inp(CRTC+6);    {Reset Attribute Data/Address Flip-Flop}
+    for x:=1 to 10 do;   {delay}
+    outp($3C0,$20);    {Set index bit 5 to keep display alive}
+    x:=inp(CRTC+6);    {Reset Attribute Data/Address Flip-Flop}
+  end
+  else begin
+    outp(pt,inx);
+    rdinx:=inp(pt+1);
+  end;
 end;
 
 procedure wrinx(pt,inx,val:word);       {write VAL to register PT index INX}
@@ -830,8 +586,11 @@ begin
   if pt=$3C0 then
   begin
     x:=inp(CRTC+6);
-    outp(pt,inx);
-    outp(pt,val);
+    outp($3C0,inx and $DF);
+    outp($3C0,val);
+    x:=inp(CRTC+6);    {If Attribute Register then reset Flip-Flop}
+    outp($3C0,$20);
+    x:=inp(CRTC+6);
   end
   else begin
     outp(pt,inx);
@@ -897,365 +656,287 @@ begin
   wrinx(pt,inx,x and (not val));
 end;
 
-
-function getbios(offs,lnn:word):string;
-var s:string;
+procedure setreg(reg,val:word);
 begin
-  s[0]:=chr(lnn);
-  move(mem[biosseg:offs],s[1],lnn);
-  getbios:=s;
+  outp(reg,inp(reg) or val);
+end;
+
+procedure clrreg(reg,val:word);
+begin
+  outp(reg,inp(reg) and (not val));
+end;
+
+procedure modregw(reg,mask,nwv:word);  {In register REG sets the bits in
+                                       MASK as in NWV other are left unchanged}
+var temp:word;
+begin
+  temp:=(inpw(reg) and (not mask))+(nwv and mask);
+  outpw(reg,temp);
+end;
+
+procedure setregw(reg,val:word);
+begin
+  outpw(reg,inpw(reg) or val);
+end;
+
+procedure clrregw(reg,val:word);
+begin
+  outpw(reg,inpw(reg) and (not val));
 end;
 
 
-
-type
-  regblk=record
-           base:word;
-           nbr:word;
-           x:array[0..255] of byte;
-         end;
-
-  regtype=record
-            chip:chips;
-            mmode:mmods;
-            mode,pixels,lins,bytes,tridold0d,tridold0e:word;
-            attregs:array[0..31] of byte;
-            seqregs,grcregs,crtcregs,xxregs:regblk;
-            stdregs:array[$3c0..$3df] of byte;
-            xgaregs:array[0..15] of byte;
-          end;
-
+  {The LOG functions writes output data to both the screen and the file
+   WHATVGA.TXT, to provide a log in case of lockup}
 var
-  rgs:regtype;
-  oldreg:boolean;
+  logfile:text;
+  wrscr:boolean;
 
-
-procedure opentxtfile(var t:text;name:string);
+procedure openlog(scr:boolean);
 begin
-  if ioresult=0 then;  {Clear any old error code}
-  assign(t,name);
-  {$i-}
-  reset(t);
-  {$i+}
-  if ioresult<>0 then
-  begin         {Fatal file error!!!}
-    textmode(3);
-    writeln('Fatal file error (',name,') !!');
-    halt(1);
+  assign(logfile,'whatvga.txt');
+  rewrite(logfile);
+  wrscr:=scr;
+  if scr then SetTextMode;
+end;
+
+procedure wrlog(s:string);
+begin
+  if wrscr then writeln(s);
+  writeln(logfile,s);
+end;
+
+procedure closelog;
+begin
+  close(logfile);
+end;
+
+
+
+
+  {Select the mode to use for the clock test, preferable a 25.175MHz one!
+   Returns the frequency (in kHz for the base freq}
+function setstdmode:longint;
+var md:integer;
+begin
+  setstdmode:=25175;
+  case cv.chip of
+    __Mach32:md:=$321;
+    __Mach64:begin
+               md:=$1292;
+               setstdmode:=28322;
+             end;
+  {  __Compaq:if cv.version>=CPQ_QV then md:=$32
+                                   else md:=$12; }
+       __AGX:begin
+               md:=$64;
+               setstdmode:=44900;
+             end;
+  else md:=$12;
   end;
+  if setmode(md,false) then;
 end;
 
 
-
-
-
-procedure loadmodes;              {Load extended modes for this chip}
-var
-  t:text;
-  s,pat:string;
-  md,x,xres,yres,err,mreq,byt:word;
-  vbe0:_vbe0;
-  vbe1:_vbe1;
-  xbe1:_xbe1;
-  xbe2:_xbe2;
-  ok:boolean;
-
-function unhex(s:string):word;
-var x:word;
+function Vretrace:boolean;
 begin
-  for x:=1 to 4 do
-    if s[x]>'9' then
-      s[x]:=chr(ord(s[x]) and $5f-7);
-  unhex:=(((word(ord(s[1])-48) shl 4
-         +  word(ord(s[2])-48)) shl 4
-         +  word(ord(s[3])-48)) shl 4
-         +  word(ord(s[4])-48));
-end;
-
-function mmode(s:string;var md:mmods):boolean;
-var x:mmods;
-   ok:boolean;
-begin
-  ok:=false;
-  for x:=_text to _p32 do
-    if s=mmodenames[x] then
-    begin
-      md:=x;
-      ok:=true;
-    end;
-  mmode:=ok;
-end;
-
-function VESAmemmode(model,bits,redinf,grninf,bluinf,resinf:word):mmods;
-const
-  mode6s=4;
-  mode:array[1..mode6s] of mmods=(_p15,_p16,_p24,_p32);
-  blui:array[1..mode6s] of word =(   5,   5,    8,    8);
-  grni:array[1..mode6s] of word =($505,$506, $808, $808);
-  redi:array[1..mode6s] of word =($A05,$B05,$1008,$1008);
-  resi:array[1..mode6s] of word =($f01,   0,    0,$1808);
-var x:word;
-begin
-  VESAmemmode:=_text;  {catch weird modes}
-  if (bits=15) and (resinf=0) then resinf:=$F01;   {Bloody ATI Vesa driver @#$}
-  case model of
-    0:VESAmemmode:=_text;
-    1:case bits of
-        1:VESAmemmode:=_cga1;
-        2:VESAmemmode:=_cga2;
-      end;
-    2:memmode:=_herc;
-    3:case bits of
-        2:VESAmemmode:=_pl2;
-        4:VESAmemmode:=_pl4;
-      end;
-    4:case bits of
-        4:VESAmemmode:=_pk4;
-        8:VESAmemmode:=_p8;
-       15:VESAmemmode:=_p15;
-       16:VESAmemmode:=_p16;
-       24:VESAmemmode:=_p24;
-      end;
-    5:;
-    6:for x:=1 to mode6s do
-      if (redinf=redi[x]) and (grninf=grni[x]) and (bluinf=blui[x])
-        and (resinf=resi[x]) then VESAmemmode:=mode[x];
-    7:;
-  end;
-end;
-
-
-procedure addmode(md,xres,yres,bytes:word;memmode:mmods);
-begin
-  inc(nomodes);
-  modetbl[nomodes].md     :=md;
-  modetbl[nomodes].xres   :=xres;
-  modetbl[nomodes].yres   :=yres;
-  modetbl[nomodes].bytes  :=bytes;
-  modetbl[nomodes].memmode:=memmode;
-end;
-
-begin
-  nomodes:=0;
-  case chip of
-   __vesa:begin
-            vbe0.sign:=$41534556;    (* VESA *)
-            viop($4f00,0,0,0,@vbe0);
-
-               {S3 VESA driver can return wrong segment if run with QEMM}
-            IF seg(vbe0.model^)=$e000 then
-              vbe0.model:=ptr($c000,ofs(vbe0.model^));
-            x:=1;
-            while vbe0.model^[x]<>$FFFF do
-            begin
-              vesamodeinfo(vbe0.model^[x],@vbe1);
-              if (vbe1.attr and 1)<>0 then
-              begin
-                memmode:=VESAmemmode(vbe1.model,vbe1.bits,vbe1.redinf
-                   ,vbe1.grninf,vbe1.bluinf,vbe1.resinf);
-                addmode(vbe0.model^[x],vbe1.width,vbe1.height,vbe1.bytes,memmode);
-              end;
-              inc(x);
-            end;
-          end;
-    __xbe:begin
-            viop($4E01,0,0,instance,@xbe1);
-            x:=1;
-            while xbe1.modep^[x]<>$FFFF do
-            begin
-              viop($4E02,0,xbe1.modep^[x],instance,@xbe2);
-              if (rp.ax=$4E) and ((xbe2.attrib and 1)>0) then
-              begin
-                memmode:=VESAmemmode(xbe2.model,xbe2.bits,xbe2.redinf
-                   ,xbe2.grninf,xbe2.bluinf,xbe2.resinf);
-                addmode(xbe1.modep^[x],xbe2.pixels,xbe2.lins,xbe2.bytes,memmode);
-              end;
-              inc(x);
-            end;
-
-          end;
+  case cv.chip of
+    __Mach64:VRetrace:=memw[cv.Xseg:$12]>=memw[cv.Xseg:$0A];
+    __Mach32:VRetrace:=inpw($CEEE)>=inpw($CAEE);   {Hm!!}
+       __AGX:if (inp(cv.IOadr+5) and 1)>0 then
+             begin
+               outp(cv.IOadr+5,1);  {Reset blanking flag}
+               VRetrace:=true;
+             end
+             else Vretrace:=false;
   else
-    pat:='['+header[chip]+']';
-    opentxtfile(t,'whatvga.lst');
-    s:=' ';
-    while (not eof(t)) and (s<>pat) do readln(t,s);
-    s:=' ';
-    readln(t,s);
-    while (s[1]<>'[') and (s<>'') do
-    begin
-      md:=unhex(copy(s,1,4));
-      ok:=mmode(copy(s,6,4),memmode);
-      val(copy(s,11,5),xres,err);
-      val(copy(s,17,4),yres,err);
-      case memmode of
- _text,_text2,_text4:bytes:=xres*2;
-   _pl1e, _herc,_cga1,_pl1:
-                     bytes:=xres shr 3;
-     _pk2,_pl2,_cga2:bytes:=xres shr 4;
-           _pl4,_pk4:bytes:=xres shr 1;
-                 _p8:bytes:=xres;
-           _p15,_p16:bytes:=xres*2;
-                _p24:bytes:=xres*3;
-                _p32:bytes:=xres*4;
-      else
-      end;
-      case dactype of
-        _dacCEG,
-          _dac8:if memmode>_p8 then ok:=false;
-         _dac15:if memmode>_p15 then ok:=false;
-         _dac16:if memmode>_p16 then ok:=false;
-      end;
-      case version of
-        S3_911,S3_924:if (md>$105) and (md<$200) then ok:=false;
-    ATI_Unknown..ATI_GUP_LX:
-          if md<$100 then
-          begin
-            rp.bx:=$5506;
-            rp.bp:=$FFFF;
-            rp.si:=0;
-            vio($1200+md);
-            if rp.bp=$FFFF then ok:=false;
-          end;
-      end;
-      val(copy(s,22,5),byt,err);
-      if (err=0) and (byt>0) then bytes:=byt;
-      mreq:=(longint(bytes)*yres+1023) div 1024;
-      case memmode of
-        _pl4:bytes:=xres shr 3;
-      end;
-      if ok and (mm>=mreq) then
-        addmode(md,xres,yres,bytes,memmode);
-      readln(t,s);
-    end;
-    close(t);
+    VRetrace:=(inp(crtc+6) and 8)>0;     {3D4h/3B4h}
   end;
 end;
+
+
+function getticks:longint;
+var cnt,stp:longint;
+    stat,x:word;
+begin
+  stat:=crtc+6;
+  disable;
+  stp:=200000;
+  cnt:=0;
+
+  while not VRetrace and (stp>0) do dec(stp);
+  while VRetrace and (stp>0) do dec(stp);
+  while not VRetrace and (stp>0) do dec(stp);
+
+  if stp>0 then
+    for x:=1 to 5 do
+    begin
+      while VRetrace and (cnt<1000000) do inc(cnt);
+      while not VRetrace and (cnt<1000000) do inc(cnt);
+    end;
+
+  enable;
+  getticks:=cnt;
+end;
+
+
+procedure progICD2061reg(clk:longint);
+const
+  ser_clk=4;
+  ser_dta=8;
+var
+  old,dta,bit:word;
+procedure setbits(bits:word);
+begin
+  outp($3C2,bits);
+  for bits:=1 to 5 do;   {delay}
+end;
+
+begin
+  if cv.chip=__S3 then  {Needs to enable the ICD for the STB Pegasus...}
+  begin
+    outpw(crtc,$4838);
+    outpw(crtc,$A539);    {Enable S3 Ext}
+    modinx(crtc,$42,$F,3);
+  end;
+  old:=inp($3CC);
+  outpw(SEQ,$100);
+  dta:=(old and $F3)+ser_dta;
+  for bit:=1 to 6 do
+  begin
+    setbits(dta+ser_clk);
+    setbits(dta);
+  end;
+  dta:=dta and $F3;
+  setbits(dta);
+  setbits(dta+ser_clk);
+  setbits(dta);
+  setbits(dta+ser_clk);
+
+  for bit:=1 to 24 do
+  begin
+    dta:=dta and $F3;
+    if (clk and 1)=0 then dta:=dta+ser_dta;
+    setbits(dta+ser_clk);
+    setbits(dta);
+    dta:=dta xor ser_dta;
+    setbits(dta);
+    setbits(dta+ser_clk);
+    clk:=clk shr 1;
+  end;
+  dta:=dta or ser_dta;
+  setbits(dta+ser_clk);
+  setbits(dta);
+  setbits(dta+ser_clk);
+  setbits(dta);
+  outp($3C2,old);
+  if cv.chip=__S3 then
+  begin
+    modinx(crtc,$5C,3,2);
+    outpw(crtc,$5A39);    {Disable S3 Ext}
+    outpw(crtc,$38);
+  end;
+  outpw(SEQ,$300);
+  delay(15);
+end;
+
+
+const
+  clkperm:integer=0;
+
+function ClockPermission:boolean;
+begin
+  if clkperm=0 then
+  begin
+    settextmode;
+    writeln('WHATVGA is about to test the clock chip or crystals on your');
+    writeln('board. This can cause strange behavior on the display.');
+    writeln('If your monitor is fixed-frequency (MDA, CGA, EGA or original');
+    writeln('VGA, in fact anything that can''t handle at least 800x600) this');
+    writeln('could in extreme situations potentionally hurt your monitor.');
+    writeln('Press Y to continue clock testing, any other key to skip it:');
+    if (getkey and $DF)=ord('Y') then clkperm:=1
+                                 else clkperm:=2;
+  end;
+  ClockPermission:=clkperm=1;
+end;
+
+procedure findclocks;
+var clks,x,y,divi,divid:word;
+  basefreq,baselevel,l,l0,l1:longint;
+  progcheck:boolean;    {Should we check for programmable clocks??}
+begin
+  if (inp($3CC) and 1)>0 then crtc:=$3D4 else crtc:=$3B4;
+  progcheck:=true;
+  clks:=4;
+  case cv.clktype of
+     clk_ext3:clks:=8;
+     clk_ext4:clks:=16;
+     clk_ext5:clks:=32;
+     clk_ext6:clks:=64;
+     clk_sdac:progcheck:=false;
+  clk_TVP302x:begin
+                progcheck:=false;
+                clks:=0;
+              end;
+  end;
+
+  if (clks>0) and ClockPermission then
+  begin
+    memmode:=_PL4;
+    basefreq:=SetStdMode;   {Usually mode 12h, but...}
+    y:=getclk(divi,divid);
+    baselevel:=getticks;
+    if baselevel>0 then
+      for x:=0 to clks-1 do
+      begin
+        if (x=8) and (cv.chip=__compaq) and (cv.version>=CPQ_QV) then
+           vio($32); {Hack to get at last 8 clock of QVision}
+        setclk(x,divid);
+        delay(50);   {Let clock settle}
+        l:=getticks;
+        if l>0 then cv.clks[x]:=((basefreq*baselevel) div l)*(divi div 12);
+      end;
+    setclk(y,divid);
+  end;
+  if progcheck and ClockPermission then
+  begin
+    outp($3C2,(inp($3CC) and $F3) or $8);   {Clk 2}
+    delay(150);
+    progICD2061reg($C00000);
+    progICD2061reg($41A83C);  {14.318MHz* 2 * 109/62 = 50.35 MHz}
+    l0:=getticks;
+    progICD2061reg($41A8BC);  {14.318MHz* 2/2 * 109/62 = 25.175 MHz}
+    l1:=getticks;
+
+    if (l0<>0) and (abs(l1-l0*2)<25) then
+    begin                    {Found an ICD2061}
+      cv.clktype:=clk_ICD2061;
+      progICD2061reg($C04000);  {Set prescale bit to *4}
+      progICD2061reg($59A8BC);  {14.318MHz* 4/2 * 109/62 = 50.35 MHz}
+      l:=getticks;
+      if abs(l1-l*2)<25 then  {Prescale bit exists = ICD2061A}
+        cv.clktype:=clk_ICD2061A;
+      progICD2061reg($C00000);  {Restore ?}
+    end;
+    setclk(y,divid);
+  end;
+
+end;
+
 
 procedure SelectVideo(item:word);
 begin
-  chip    :=vid[item].chip;
-  instance:=vid[item].id;
-  IOadr   :=vid[item].IOadr;
-  version :=vid[item].version;
-  dactype :=vid[item].dac;
-  dacname :=vid[item].dacname;
-  mm      :=vid[item].mem;
-  features:=vid[item].features;
-  name    :=vid[item].name;
-  XGAseg  :=vid[item].xseg;
-  phadr   :=vid[item].phadr;
-  subvers :=vid[item].subver;
-  DAC_RS2 :=vid[item].DAC_RS2;
-  DAC_RS3 :=vid[item].DAC_RS3;
+  cv:=vid[item];
   loadmodes;
-  video:=header[chip];
+  video:=header[cv.chip];
+  settextmode;
 end;
 
-
-procedure addvideo;
-var nam,s:string;
-    t:text;
-    nr,err:word;
-begin
-  nam:='';
-  if version<>0 then
-  begin
-    opentxtfile(t,'chips.lst');
-    while not eof(t) do
-    begin
-      readln(t,s);
-      val(copy(s,1,4),nr,err);
-      if nr=version then
-      begin
-        nam:=copy(s,7,255);
-        if nam[length(nam)]='(' then nam:=nam+hex4(subvers)+')';
-      end;
-    end;
-    close(t);
-  end;
-  nam:=nam+' '+name;
-  if dactype=0 then testdac;
-  if force_mm<>0 then mm:=force_mm;
-  inc(vids);
-  vid[vids].chip    :=chip;
-  vid[vids].id      :=instance;   {instance (XBE)}
-  vid[vids].ioadr   :=IOadr;      {base I/O adr}
-  vid[vids].version :=version;
-  vid[vids].dac     :=dactype;
-  vid[vids].dacname :=dacname;
-  vid[vids].mem     :=mm;
-  vid[vids].features:=features;
-  vid[vids].name    :=nam;
-  vid[vids].xseg    :=XGAseg;
-  vid[vids].phadr   :=phadr;
-  vid[vids].subver  :=subvers;
-  vid[vids].DAC_RS2 :=DAC_RS2;
-  vid[vids].DAC_RS3 :=DAC_RS3;
-  vid[vids].sname   :=chipnam[chip];
-end;
-
-procedure UNK(vers,code:word);
-begin
-  version:=vers;
-  subvers:=code;
-end;
-
-procedure SetVersion(vers:word;nam:string);
-begin
-  Version:=vers;
-  name:=nam;
-end;
-
-
-procedure SetDAC(typ:word;Name:string);
-begin
-  dactype:=typ;
-  dacname:=name;
-end;
-
-
-function tstrg(pt,msk:word):boolean;       {Returns true if the bits in MSK
-                                            of register PT are read/writable}
-var old,nw1,nw2:word;
-begin
-  old:=inp(pt);
-  outp(pt,old and not msk);
-  nw1:=inp(pt) and msk;
-  outp(pt,old or msk);
-  nw2:=inp(pt) and msk;
-  outp(pt,old);
-  tstrg:=(nw1=0) and (nw2=msk);
-end;
-
-function testinx2(pt,rg,msk:word):boolean;   {Returns true if the bits in MSK
-                                              of register PT index RG are
-                                              read/writable}
-var old,nw1,nw2:word;
-begin
-  old:=rdinx(pt,rg);
-  wrinx(pt,rg,old and not msk);
-  nw1:=rdinx(pt,rg) and msk;
-  wrinx(pt,rg,old or msk);
-  nw2:=rdinx(pt,rg) and msk;
-  wrinx(pt,rg,old);
-  testinx2:=(nw1=0) and (nw2=msk);
-end;
-
-function testinx(pt,rg:word):boolean;     {Returns true if all bits of
-                                           register PT index RG are
-                                           read/writable.}
-var old,nw1,nw2:word;
-begin
-  testinx:=testinx2(pt,rg,$ff);
-end;
 
 procedure dac2pel;    {Force DAC back to PEL mode}
 begin
   if inp($3c8)=0 then;
 end;
-
-var
-  daccomm:word;
 
 function trigdac:word;  {Reads $3C6 4 times}
 var x:word;
@@ -1263,6 +944,7 @@ begin
   x:=inp($3c6);
   x:=inp($3c6);
   x:=inp($3c6);
+  if (cv.dactype=_dacMU1880) then x:=inp($3C6);
   trigdac:=inp($3c6);
 end;
 
@@ -1274,49 +956,256 @@ end;
 
 function getdaccomm:word;
 begin
-  if DAC_RS2<>0 then getdaccomm:=inp($3C6+DAC_RS2)
-  else begin
+  {if cv.DAC_RS2<>0 then getdaccomm:=inp($3C6+cv.DAC_RS2)
+  else} begin
     dac2comm;
     getdaccomm:=inp($3C6);
     dac2pel;
   end;
 end;
 
+const
+  SavedDACpage:word=0;  {DAC page state saved by SaveDACpage, reset by clearDACpage}
 
-
-procedure checkmem(mx:word);
-var
-  fail:boolean;
-  ma:array[0..99] of byte;
-  x:word;
+procedure SaveDACpage;
 begin
-  memmode:=_p8;
-
-  fail:=true;
-  while (mx>1) and fail do
-  begin
-    setbank(mx-1);
-    move(mem[$a000:0],ma,100);
-    for x:=0 to 99 do
-      mem[$a000:x]:=ma[x] xor $aa;
-    setbank(mx-1);
-    fail:=false;
-    for x:=0 to 99 do
-      if mem[$a000:x]<>ma[x] xor $aa then fail:=true;
-    move(ma,mem[$a000:0],100);
-    if not fail then
-    begin
-      setbank((mx shr 1)-1);
-      for x:=0 to 99 do
-        mem[$a000:x]:=ma[x] xor $55;
-      setbank(mx-1);
-      fail:=true;
-      for x:=0 to 99 do
-        if mem[$a000:x]<>ma[x] xor $55 then fail:=false;
-      move(ma,mem[$a000:0],100);
+  SavedDACpage:=0;   {default}
+  if (cv.flags and FLG_ExtDAC)>0 then   {RS2/3 addressing ?}
+    case cv.chip of
+      __S3:begin
+             outpw(crtc,$4838);  {Unlock S3 regs}
+             outpw(crtc,$A539);
+             SavedDACpage:=(rdinx(crtc,$43) and 2) shl 1;
+             if (cv.version>S3_924) and (SavedDACpage=0) then
+               SavedDACpage:=(rdinx(crtc,$55) and 3) shl 2;
+             if (rdinx(crtc,$5C) and $20)>0 then inc(SavedDACpage,16);
+             outpw(crtc,$5A39);
+             outpw(crtc,$38);  {Lock S3 regs}
+           end;
     end;
-    mx:=mx shr 1;
-  end;
-  mm:=mx*128;
 end;
-
+
+
+const
+  DACpage:boolean=false;  {Set if DAC registers enabled (MGA,Weitek..)}
+
+  {Returns the address of the DAC register selected by index (0..3
+   for standard DACs, 0..7 or 0..15 for advanced DACs), and sets
+   any necessary flags. }
+function setDACpage(index:word):word;
+const
+  DACadr:array[0..3] of word=($3C8,$3C9,$3C6,$3C7);
+  M32DACadr:array[0..3] of word=($2EC,$2ED,$2EA,$2EB);
+var ret,x:word;
+    found:boolean;
+begin
+  found:=true;
+  ret:=DACadr[index and 3];
+  if cv.chip=__AGX then outp(cv.IOadr,1);   {Enable VGA regs}
+  if (cv.flags and FLG_ExtDAC)>0 then   {RS2/3 addressing ?}
+    case cv.chip of
+       __AGX:begin
+               if index>7 then ret:=cv.spcreg+(index and 3);
+               if (index and 4)>0 then outp(cv.IOadr+10,$51)
+                                  else outp(cv.IOadr+10,0);
+             end;
+       __ATI:if cv.Version<ATI_GUP_3 then found:=false
+             else modinx(cv.IOadr,$A0,$60,index shl 3);
+    __Compaq:begin
+               if (index and 4)>0 then inc(ret,$8000);
+               if (index and 8)>0 then inc(ret,$1000);
+             end;
+    __Mach32:begin
+              { modinx(cv.IOadr,$A0,$60,index shl 3);}
+               x:=inp($8EEF) and $CF;
+               outp($7AEF,x+((index and $C) shl 2));
+               ret:=ret-$DC;   {3C8 -> 2EC}
+             end;
+    __Mach64:begin
+               outp($62EC,index shr 2);
+               ret:=$5EEC+(index and 3);
+             end;
+       __MGA:begin
+               if (not DACpage) and (cv.PCIid>0) then
+               begin
+                 wPCIlong($10,$AC000);  {Map ACC regs at AC000h}
+                 cv.Xseg:=$AC00;
+                 DACpage:=true;
+               end;
+               ret:=0;
+             end;
+       __NCR:ret:=ret+((index and 4) shl 13);    {A15 = $8000}
+        __S3:begin
+               outpw(crtc,$4838);  {Unlock S3 regs}
+               outpw(crtc,$A539);
+               if cv.version>S3_924 then
+               begin
+                 clrinx(crtc,$43,2);    {Just in case}
+                 modinx(crtc,$55,3,index shr 2);
+                 modinx(crtc,$5C,$20,index shl 1);   {TVP3025 control}
+               end
+               else modinx(crtc,$43,2,index shr 1);
+               outpw(crtc,$5A39);
+               outpw(crtc,$38);  {Lock S3 regs}
+             end;
+     __Tseng:begin
+               outp($3BF,3);
+               outp(crtc+4,$A0);
+               modinx(crtc,$31,$40,index shl 4);   {Chrontel DAC}
+             end;
+            {Diamond Viper w/ OAK }
+       __OAK:ret:=ret+(index and $C) shl 12;
+    __Weitek,__WeitekP9:
+             if (cv.version<WT_P9100) and (cv.PCIid=0) then
+               ret:=ret+(index and $C) shl 12  {Non-PCI P9000s}
+             else begin
+               if not DACpage then
+               begin
+                 outp($9100,$41);
+                 x:=inp($9104);
+                 outp($9100,$41);
+                 outp($9104,(x and $F3) or 4);   {Enable Acc regs at A000h}
+                 DACpage:=true;
+               end;
+               ret:=0;
+             end;
+    else found:=false;
+    end
+  else found:=false;
+  if not found and (index=dacHIcmd) then dac2comm;
+  setDACpage:=ret;
+end;
+
+  {Clears any bits set by setDACpage. Should be used after a sequence
+   of extended DAC register accesses to avoid problems with accessess
+   to the standard DAC registers}
+procedure clearDACpage;
+var x:word;
+begin
+  if cv.chip=__AGX then outp(cv.IOadr,4);   {Disable VGA regs}
+  if SavedDACpage>0 then
+    x:=setDACpage(SavedDACpage)
+  else begin
+  if (cv.flags and FLG_ExtDAC)>0 then   {RS2/3 addressing ?}
+    case cv.chip of
+       __AGX:outp(cv.IOadr+10,0);
+       __ATI:clrinx(cv.IOadr,$A0,$60);
+    __Mach64:outp($62EC,0);
+       __MGA:if DACpage then
+               wPCIlong($10,PCIrec[cv.PCIid].l[4]);
+        __S3:begin
+               outpw(crtc,$4838);  {Unlock S3 regs}
+               outpw(crtc,$A539);
+               if cv.version>S3_924 then clrinx(crtc,$55,3);
+               clrinx(crtc,$43,2);
+               outpw(crtc,$5A39);
+               outpw(crtc,$38);  {Lock S3 regs}
+             end;
+     __Tseng:begin
+               outp($3BF,3);
+               outp(crtc+4,$A0);
+               clrinx(crtc,$31,$40);   {Chrontel DAC}
+             end;
+    __Weitek,__WeitekP9:
+             if DACpage then
+             begin
+               outp($9100,$41);
+               x:=inp($9104);
+               outp($9100,$41);
+               outp($9104,x and $F3);  {Disable Acc regs at A000h}
+             end;
+    else dac2pel;
+    end
+  else dac2pel;
+  end;
+  DACpage:=false;
+end;
+
+
+
+function rdDACreg(index:word):word;
+var inx:word;
+begin
+  inx:=SetDACpage(index);
+  if inx=0 then
+    case cv.chip of
+      __MGA:rdDACreg:=mem[cv.Xseg:$3C00+index*4];
+      __Weitek,__WeitekP9:
+            begin
+              if mem[SegA000:$198]=0 then;    {Wait ?}
+              rdDACreg:=mem[SegA000:$200+4*index];
+            end;
+    end
+  else rdDACreg:=inp(inx);
+end;
+
+procedure wrDACreg(index,val:word);
+var inx:word;
+begin
+  inx:=SetDACpage(index);
+  if inx=0 then
+    case cv.chip of
+      __MGA:mem[cv.Xseg:$3C00+index*4]:=val;
+      __Weitek,__WeitekP9:
+            mem[SegA000:$200+4*index]:=val;
+    end
+  else outp(inx,val);
+end;
+
+
+procedure clrDACreg(index,val:word);
+begin
+  wrDACreg(index,rdDACreg(index) and not val);
+end;
+
+procedure setDACreg(index,val:word);
+begin
+  wrDACreg(index,rdDACreg(index) or val);
+end;
+
+procedure modDACreg(index,msk,val:word);
+begin
+  wrDACreg(index,(rdDACreg(index) and not msk) or (msk and val));
+end;
+
+
+function rgb(r,g,b:word):longint;
+begin
+  r:=lo(r);g:=lo(g);b:=lo(b);
+  case memmode of
+       _PL1,_PL1E,_CGA1:
+            rgb:=r and 1;
+       _PL2,_CGA2:
+            rgb:=r and 3;
+  _PL4,_PK4:rgb:=r and 15;
+        _P8:rgb:=r;
+       _P15:rgb:=((r shr 3) shl 5+(g shr 3)) shl 5+(b shr 3);
+       _P16:rgb:=((r shr 3) shl 6+(g shr 2)) shl 5+(b shr 3);
+  _P24,_P32:rgb:=(longint(r) shl 8+g) shl 8 +b;
+_P24b,_P32b:rgb:=(longint(b) shl 8+g) shl 8 +r;
+      _p32c:rgb:=((longint(r) shl 8+g) shl 8 +b) shl 8;
+      _P32d:rgb:=((longint(b) shl 8+g) shl 8 +r) shl 8;
+  end;
+end;
+
+
+  {Writes a 32bit value to a DWORD at offset ADR in Xseg}
+procedure write32(adr:word;val:longint);
+var w:word;
+begin
+  w:=cv.Xseg;
+    {mov es,[cv.Xseg]  mov di,[BP+adr]  mov eax,[BP+val]  mov es:[di],eax}
+  inline($8E/$46/<w/$8B/$7E/<adr/$66/$8B/$46/<val/$66/$26/$89/5);
+end;
+
+  {Writes a two 16bit values to a DWORD at offset ADR in Xseg as one MOVL}
+procedure write32w(adr:word;hiw,low:word);
+var w:word;
+  l:longint;
+begin
+  l:=(longint(hiw) shl 16)+low;
+  w:=cv.Xseg;
+    {mov es,[cv.Xseg]  mov di,[BP+adr]  mov eax,[BP+l]  mov es:[di],eax}
+  inline($8E/$46/<w/$8B/$7E/<adr/$66/$8B/$46/<l/$66/$26/$89/5);
+end;
+

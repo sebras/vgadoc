@@ -3,7 +3,7 @@ Common Questions.
 Q: My S3 or Mach32 card sometimes does weird things.
 A: All 8514/A based cards (S3, ATI Ultra & Mach32) uses I/O addresses like
    42E8h, BEE8h etc. If you have a Com4 installed (in fact any serial port at
-   2E8h, the serial ports are numbered as they are found in the order 3F8h,
+   2F8h, the serial ports are numbered as they are found in the order 3F8h,
    2F8h, 3E8h, 2E8h) this will almost certainly cause problems, as most serial
    and multi I/O adapters only decodes the lower 10 bits of the I/O address.
    The first check is to run debug and type: d 0:400 and press the enter key.
@@ -83,17 +83,17 @@ A: The dot frequency is the frequency of the pixels sent to the monitor. This
 Q: I have a video card you don't seem to cover, how can I help
    Or I have some documentation/experience.....
 A: I'm constantly looking for new material and always welcome contributions.
-   If you have original matarial such as datasheets/books or programmers refs,
+   If you have original material such as datasheets/books or programmers refs,
    and don't feel you have the time to enter it all yourself you are very
    welcome to send a copy of the material to my surface mail address (see the
    README file for the address). Full credit will of course be given.
    If you have a video card that WHATVGA fails to identify, identifies more
    or less incorrectly or fails to use correctly, I'm definitely interested.
    Please read the WHATVGA.DOC file for some useful tests and ideas.
-   Generally I would recommand running WHATVGA in manual modes first to get a
+   Generally I would recommend running WHATVGA in manual modes first to get a
    feeling for the program and what works/don't work. Then run WHATVGA /a
    and mail me the resulting WHVGAxx.TST file (preferably ZIPed or ARJed).
    Remember to UUencode the file before sending it by E-mail.
    Also find out as much as possible about your video card (which chipset,
-   which RAMDAC, howmuch video RAM..) as possible. Remember that many video
+   which RAMDAC, how much video RAM..) as possible. Remember that many video
    cards (even brand names) use chipsets from other manufacturers.

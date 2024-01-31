@@ -58,7 +58,7 @@ Bit 0-4  The scanline (starting from 0) within the character where the
 3B4h index 0Bh (W): Cursor End Register
 Bit 0-4  The scanline (starting from 0) within the character where the
          cursor ends. If the start position (index 0Ah) is larger than this
-         value, no cursor is shown. 
+         value, no cursor is shown.
 
 3B4h index 0Ch (W): Start Address High Register
 Bit 0-5  The upper 6 bits of the address of the start of the display.
@@ -86,7 +86,7 @@ Bit 0-7  The lower 8 bits of the latched address of the lightpen strobe.
 
 
 
-3B8h (W)
+3B8h (W):  Display Mode Control Register
 bit   1  Hercules graphics mode if set, text mode else
       3  Video enabled if set
       5  Blink enabled if set
@@ -123,10 +123,10 @@ bit   0  Setting of graphics mode bit (3B8h bit 1) enabled if set
       y:=inp($3BA);
     until (y and $80)=0) or (x=0);
     if x=0 then __MDA__
-    else 
+    else
       case y and $70 of
         $50:Hercules Incolor;
         $10:Hercules Graphics Plus
-      else Hercules Graphics Card;  
+      else Hercules Graphics Card;
       end;
   end;

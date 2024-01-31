@@ -1,6 +1,7 @@
 IBM Color Graphics Adapter (CGA)
 
-The original CGA was built with discrete logic around an MC6845 display controller.
+The original CGA was built with discrete logic around an MC6845 display
+ controller.
 
 On the original CGA and some clones accessing the video memory during the
 active display time caused the display controller to miss some pixels (seen as
@@ -87,7 +88,7 @@ Note: this register is Read/Write on the CT82c425/6.
 3D4h index 0Bh (W): Cursor End Register
 Bit 0-4  The scanline (starting from 0) within the character where the
          cursor ends. If the start position (index 0Ah) is larger than this
-         value, no cursor is shown. 
+         value, no cursor is shown.
 Note: this register is Read/Write on the CT82c425/6.
 
 3D4h index 0Ch (W): Start Address High Register
@@ -183,7 +184,7 @@ Bit 0-4  The number of LCD Latch Pulses (-1) for which the AC signal is on
          remains ON for one frame and OFF for the next.
 
 3D4h index DAh (R/W): Threshold Register                     (CT82c425/6 only)
-Bit 0-3  Threshold Value. 
+Bit 0-3  Threshold Value.
       4  Saturation. If set the shifts in fore- and background colors by
          SMARTMAP is limited to the saturation points, if clear the
          colormapping will be modulo 16
@@ -252,23 +253,23 @@ bit   0  80x25 Alpha mode if set, 40x25 else
 Note: this register is Read/Write on the CT82c425/6.
 
 3D9h (W): Color Select register
-         The function of this register depends on the active mode. 
+         The function of this register depends on the active mode.
          Text modes:      320x200 modes:         640x200 mode:
 Bit   0  Blue border      Blue background        Blue ForeGround
       1  Green border     Green background       Green ForeGround
       2  Red border       Red background         Red ForeGround
       3  Bright border    Bright background      Bright ForeGround
       4  Backgr. color    Alt. intens. colors    Alt. intens colors
-      5  No func.         Selects palette 
-           Palette 0 is Green, red and brown, 
-           palette 1 is Cyan, magenta and white.
+      5  No func.         Selects palette
+                     Palette 0 is Green, red and brown,
+                     Palette 1 is Cyan, magenta and white.
 Note: this register is Read/Write on the CT82c425/6.
 
-3DAh (R): Status register 
+3DAh (R): Status register
 bit   0  Display Enable. If set Horizontal or Vertical Retrace is active and
          the video memory may be accessed by the PC.
       1  Lightpen trigger has occurred if set
-      2  Lightpen switch is off if set  
+      2  Lightpen switch is off if set
       3  Vertical Sync. Vertical retrace active if set.
          Video RAM can be accessed for the next 1.25 ms.
 Note: The CT82c425/6 modifies bits 0 and 3 for LCD panels. See 3D4h index DFh.
@@ -282,6 +283,13 @@ Reading or writing this register sets the lightpen strobe, causing the
 lightpen position to be latched to 3D4h index 10h-11h.
 The strobe must be cleared by accessing register 3DBh.
 
+3DDh (W):                                                  (AGA - Plantronics)
+bit   4  Set for 320x200 16color mode, clear for all other (16color?) modes
+      5  Set for 640x200 4color mode, clear for all other (4color?) modes
+      6  If set plane0 is at BC000h-BFFFFh and plane1 at B8000h-BBFFFh,
+         if clear plane0 is at B8000h-BBFFFh and plane1 at BC000h-BFFFFh,
+      7  Set for 640x200 16color mode, clear for all other (16color?) modes.
+
 3DEh (R/W): AT&T Mode Register                                 (CT82c426 only)
 bit   0  AT&T Mode. Only effective if 3D4h index D8h bit 5 is set.
          If clear text modes are displayed as 16line characters and graphics
@@ -294,6 +302,13 @@ bit   0  AT&T Mode. Only effective if 3D4h index D8h bit 5 is set.
       6  Enable Underline. If set bit 0 of the attribute byte selects
          underline (as in the MDA), if clear it selects blue ForeGround.
 Note: this register is only accessible if 3D4h index D8h bit 5 is set.
+
+3DFh (W):                                                  (AGA - Plantronics)
+bit   3  132column monochrome text mode
+      4  132column color text mode (3D8h bit 0 must be set)
+      5  Set emulation mode in lieu of DIP switch
+      6  Set monochrome mode in lieu of DIP switch
+      7  Set color mode in lieu of DIP switch
 
 
   Video Modes:

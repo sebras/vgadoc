@@ -1,13 +1,21 @@
 PRIMUS P2000
 
 P2000     2MB  max 1280x1024/256c, 800x600/32k.
+P3000     P2000 with line draw
 
 The P2000 is an accelerator card.
 
 
 3CEh index 13h (R/W):
-bit    6  If set interlaced display is enabled, and the display offset
+bit    5  Clock ?
+       6  If set interlaced display is enabled, and the display offset
           (CRTC index 13h + 3CEh index 21h bit 5) is divided by 2.
+
+3CEh index 14h (R/W):
+bit    0  ?
+     2-3  Divides video clock by. 0: 1, 1: 4, 2: 2, 3: 4
+     4-5  Clock select bit 2-3 (bits 0-1 are in 3C2h/3CCh bits 2-3)
+       7  Screen flashes if clear ??
 
 3CEh index 1Dh (R/W):
 bit  0-1  Monitor type. 0=35KHz, 1=48KHz, 2=56KHz, 3=65KHz.
@@ -15,7 +23,7 @@ bit  0-1  Monitor type. 0=35KHz, 1=48KHz, 2=56KHz, 3=65KHz.
 3CEh index 1Eh W(R/W):
 
 3CEh index 21h (R/W):
-bit  0-2  Display start address bit 16-18.  
+bit  0-2  Display start address bit 16-18.
        5  Bit 8 of the Display Offset (3d4h index 13h),
 
 3CEh index 30h 3(R/W):  Source address
@@ -60,7 +68,7 @@ bit 0-7  Write bank no. in 64kb units.
 
 3D7h (R/W): Read bank
 bit 0-7  Read bank no. in 64kb units.
- 
+
 
 Accelerated commands are set up as follows:
   Set up the registers with the parameters (areas, size and color)
@@ -76,7 +84,7 @@ coprocessor. The commands can be modified via the fields in 3CEh index 3
 ID Primus P2000:
 
  if testinx2($3CE,$3D,$3F) and tstrg($3D6,$1F) and tstrg($3D7,$1F) then
-   _p2000 
+   _p2000
 
 
 

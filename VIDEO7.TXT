@@ -2,12 +2,15 @@
   Bought by Headland Technologies in
   Bought by SPEA Software AG in 1993.
 
-    Earlier V7/Headland boards use Chips&Technologies and Cirrus chips.
+The earliest V7/Headland boards use Chips&Technologies and Cirrus chips.
 
-    Board:    Chip:
-    V7VRAM    HT-208
-    V71024i   HT-208
-      ?       HT-216           
+
+G2 GC205   VRAM-I/VGA-16 boards ?. Also known as HT 208 rev 1-3 ??
+G2 GC208   V7 1024i boards. Also known as HT208. Split banks
+HT 209     V7VRAM-II boards
+HT 216     Color expansion. RAster ops.
+HT 216-32  Local bus version of HT216 ?
+
 
 Board:      Chip:                     Features:
 
@@ -38,8 +41,8 @@ bit 0  Enable Microchannel Video if set
        Must be armed by 3C4h index 0FCh bit 7 to change.
 
 3C4h index  6  (R/W):  Extension Control
-bit   0  (Read Only) Extensions enabled if set
-bit 0-7  (Write Only) 0EAh Enables extensions, 0AEh disables.
+bit   0  (R) Extensions enabled if set
+bit 0-7  (W) 0EAh Enables extensions, 0AEh disables.
 
 3C4h index  7  (R/W):  Reset Horizontal Character Counter
 
@@ -62,7 +65,8 @@ bit 0-15  Chip version. Index 8Fh is the major version, and 8Eh is the minor.
           Originally this was probably for two different chips.
             8xxxh-FFFFh  VEGA VGA Chip
                   70xxh  HT208 chip rev. 1,2 or 3 (VRAM I/VGA-16)
-                  714xh  HT208 chip rev A (VRAM II ?)
+                  7070h  G2 GC205
+                  714xh  HT208 chip rev A (VRAM II ?). Also G2 GC208.
                   7151h  HT208 chip rev B (VRAM II)
                   7152h  HT208 chip rev C or D (VRAM II)
                   7760h  HT216 rev B or C
@@ -77,10 +81,10 @@ bit 0-7  Start address of the Pointer Pattern. This value selects the 256 byte
          The cursor map consists of two 32x32 bitmaps. The first is the AND
          mask and the second is the XOR mask.
             AND     XOR
-             0       0
+             0       0      Black
              0       1      Inverse screen data
              1       0      Screen data
-             1       1
+             1       1      White
 
 3C4h index 9Ch (R/W):  Pointer Horizontal Position High
 bit 0-2  Bit 8-10 of the X co-ordinate of the Cursor
@@ -107,46 +111,92 @@ bit 0-7  Plane 2 Memory Latch Data
 bit 0-7  Plane 3 Memory Latch Data
 
 3C4h index A4h (R/W):  Clock Select
-bit 2-4  0: 25.175 MHz
-         1: 28.322 MHz
-         2: 30.000 MHz
-         3: 32.514 MHz
-         4: 34.000 MHz
-         5: 36.000 MHz
-         6: 38.000 MHz
-         7: 40.000 MHz    
+bit 2-4  Clock select bit 0-2. Bit 3 is in index F8h bit 0
+         This is activated when 3C2h is written. Actually 3C2h/3CCh bits 2-3
+         will override bits 2-3 of this register
+         HT208-A (in MHz) generates:
+           0: 25.175,   1: 48.6,    2: 22.9,    3: 0
+           4: 34,       5: 48.6,    6: 22.9,    7: 0
+           8: 25.175,   9: 28.322, 10: 22.9,   11: 0
+          12: 34,      13: 36,     14: 22.9,   15: 40
+         Another card gives (8-15 unknown):
+           0: 25.175,   1: 28.322,  2: 30.000,  3: 32.514
+           4: 34.000,   5: 36.000,  6: 38.000,  7: 40.000
 
 3C4h index A5h (R/W):  Cursor Attributes
 bit 0  Cursor blink enabled if clear
     3  Text Cursor Mode is XOR if set, Replace if clear
     7  Hardware Graphics Cursor Enabled if set
 
-3C4h index B0h-BFh (R/W):  Scratch Registers
+3C4h index B3h (R/W):  Scratch RAM
 bit 0-7  Scratch
+
+3C4h index B4h (R):  Power On Reset 0                                  (HT216)
+
+3C4h index B5h (R):  Power On Reset 1                                  (HT216)
+
+3C4h index B6h (R):  Power On Reset 2                                  (HT216)
+
+3C4h index B7h (R):  Power On Reset 3                                  (HT216)
+
+3C4h index C0h (R/W):  Monochrome Lock
 
 3C4h index C1h (R/W):
 bit   0  Set to enable 8bit DAC rather than 6bit.
 
-3C4h index C8h (R/W):  XMISCCTL2
-bit   0  Set to enable MOVSB operation ??    (HT216 only)
+3C4h index C8h (R/W):  Miscellaneous Control 2
+bit   0  Set to enable MOVSB operation ??                        (HT216 only?)
+      4  Set in Extended 256 color modes
+      6  Enable Linear Addressing if set
 
-3C4h index CDh (R/W):  XALU CONTROL
-bit   5  If set RMW cycles are enabled.
+3C4h index C9h (R/W):  Extended Linear Address Offset
+bit 0-3  Bits 20-23 of the Linear Address Offset
 
-3C4h index CEh (R/W): XALU
+3C4h index CAh (R/W):  Horizontal Overflow                             (HT216)
 
-3C4h index E0h (R/W):  Miscellaneous Control      (Version 4+)
-bit 0-3  Reserved
-      4  Interlaced
+3C4h index CBh (R/W):  Low Water Mark                                  (HT216)
+
+3C4h index CCh (R/W):  DM Function Control                             (HT216)
+
+3C4h index CDh (R/W):  Extended ALU Function Control                   (HT216)
+bit 0-1  Color Expansion mode:
+          0,2: VGA compatible mode
+            1: Packed pixel 8plane color expansion
+            3: Planar color expansion mode
+    2-3  Bit mask source. 0: Bitmask from 3CEh index 8
+           1: Bit mask from CPU byte, 2,3: Bit mask from 3C4h index F5h
+      5  If set RMW cycles are enabled.
+      6  If set enables Source to Destination alignment.
+      7  Set to Enable Raster Operations
+
+3C4h index CEh (R/W):  Extended ALU Function Select                    (HT216)
+bit 0-3  Raster Operation.
+             0: Set to 0  ...
+
+3C4h index CFh (R/W):  Extended Linear Address Offset High             (HT216)
+bit 0-7  Bits 24-31 of the Linear Address Offset
+
+3C4h index E0h (R/W):  Miscellaneous Control                   (HT208 rev A +)
+bit   0  Interlaced
     5-6  Reserved
-      7  Enables Split Bank Mode (VRAM II or HT216 only)
+      7  Enables Split Bank Mode if set(VRAM II or HT216 only)
+         On the HT208 rev A, split banks appears to cause index E8h to be the
+         read/write bank register for A000h-A7FFh and index E9h to be the
+         read/write bank register for A800h-AFFFh.
 
-3C4h index E8h (R/W):  Single/Write Bank Register (Version 4+)
-bit 4-7  Single/Write Bank no.
+3C4h index E1h (R/W):  Interlace Value
 
-3C4h index E9h (R/W):  Read Bank Register         (Version 4+)
-bit 4-7  Read Bank no.
-         Only Active if Split mode enabled (3C4h index E0h bit 7)
+3C4h index E2h (R/W):  Extended Character Width Enable
+
+3C4h index E3h (R/W):  High Water Mark
+
+3C4h index E8h (R/W):  Single/Write Bank Register              (HT208 rev A +)
+bit 0-7  Single/Write Bank in units of 4KB.
+         For 16color modes this is in units of 1KB.
+
+3C4h index E9h (R/W):  Read Bank Register                      (HT208 rev A +)
+bit 0-7  Read Bank in units of 4KB.
+         Only Active if Split mode enabled (3C4h index E0h bit 7 set)
 
 3C4h index EAh (W): Switch Strobe
 Note:  A write to this register copies the switch positions to
@@ -169,36 +219,34 @@ bit 0-7  Foreground Latch for plane 2.
 bit 0-7  Foreground Latch for plane 3.
 
 3C4h index F0h (R/W):  Fast Foreground Latch Load
-bit 0-7  The Foreground Latches (3C4h index ECh to EFh) for the four
-         memory planes can be loaded by writing to this register.
-         The writes will cycle through planes 0-3.
-         A read will restart at plane 0.
+bit 0-7  The Foreground Latches (3C4h index ECh to EFh) for the four memory
+         planes can be loaded by writing to this register. The writes will
+         cycle through planes 0-3. A read will restart at plane 0.
 
 3C4h index F1h (R/W):  Fast Latch Load State
-bit 0-1  Background Latch Load State. Determines which of the
-         four memory latches will be loaded by a write to 3C4h
-         index F2h. Each write to index F2h will increment this
-         value and each read from index F2h will reset it to 0.
+bit 0-1  Background Latch Load State. Determines which of the four memory
+         latches will be loaded by a write to 3C4h index F2h. Each write to
+         index F2h will increment this value and each read from index F2h
+         will reset it to 0.
     2-3  Unused
-    4-5  Foreground Latch Load State. Determines which of the
-         four Foreground latches (3C4h index ECh to EFh) will
-         be loaded by the next write to 3C4h index F0h.
-         Each write to index F0h will increment this value
+    4-5  Foreground Latch Load State. Determines which of the four Foreground
+         latches (3C4h index ECh to EFh) will be loaded by the next write to
+         3C4h index F0h. Each write to index F0h will increment this value
          and each read from index F0h will reset it to 0.
     6-7  Unused
 
 3C4h index F2h (R/W):  Fast Background Latch Load
-bit 0-7  The Memory Data Latches for the four memory planes can be
-         loaded by writing to this register. The writes will cycle
-         through planes 0-3. A read will restart at plane 0.
+bit 0-7  The Memory Data Latches for the four memory planes can be loaded by
+         writing to this register. The writes will cycle through planes 0-3.
+         A read will restart at plane 0.
 
 3C4h index F3h (R/W):  Masked Write Control   (Only with VRAM)
 bit   0  Enables Masked Writes if set
-      1  If set rotated CPU byte is used as WriteMask, else
-         Masked Write Mask register is used.
+      1  If set rotated CPU byte is used as WriteMask, else Masked Write Mask
+         register is used.
 
 3C4h index F4h (R/W):  Masked Write Mask      (Only with VRAM)
-bit 0-7  If Masked Writes enabled by 3C4h index F3h bit 0
+bit 0-7  If Masked Writes enabled (3C4h index F3h bit 0 set)
          Only the bits set here will be updated in Video memory.
 
 3C4h index F5h (R/W): Foreground/Background Pattern
@@ -208,23 +256,16 @@ bit 0-7
 bit 0-1  Write Bank no bit 2-3 if 256 color, bit 0-1 else.
     2-3  Read Bank no bit 2-3 if 256 color, bit 0-1 else.
     4-5  CRTC Bank (Address bit 16-17)
-      6  Display address Wraps Around at bank boundary if set
-      7  Split Screen Wraps around at bank boundary if set
+      6  Display address Wraps Around at bank boundary if clear
+      7  Split Screen Wraps around at bank boundary if clear
 
 3C4h index F7h (R/W):  Switch Readback
 bit 0-7  Switch positions as read by the last write to the Switch
          Strobe Register (3C4h index EAh)
 
 3C4h index F8h (R/W):  Extended Clock Control
-bit 5-7  Clock Source:
-           0: 25.175 MHz
-           1: 28.322 MHz
-           2: 30.000 MHz
-           3: 32.514 MHz
-           4: 34.000 MHz
-           5: 36.000 MHz
-           6: 38.000 MHz
-           7: 40.000 MHz
+bit   0  Clock select bit 3. Bits 0-2 are in index A4h bits 2-4.
+    5-7  Clock Source: See index A4h bits 2-4.
 Note: depending on mode and other bits in this register other
       values may be selected.
 
@@ -244,9 +285,9 @@ bit 0-3  Background expansion color
 bit   0  Enable Extended Attribute functions if set
          Extended attributes allows underlining using a mask
          in plane 3 for each character.
-      1  256-Color Paging Enabled if set.
-      2  256-Color 64K/128K paging Select.
-         128K pages if set, 64K pages else.
+      1  256-Color 64K/128K paging Select. 128K pages if set, 64K pages else.
+         Only active if bit 2 set
+      2  256-Color Paging Enabled if set.
     3-4  Reserved.
       5  Enables sequential chain4 mode if set ??
       6  Reserved.
@@ -259,8 +300,8 @@ bit   0  Unused
       1  Foreground/background source select
          Source is CPU data if set, 3C4h index F5h else.
     2-3  Foreground/background mode select
-           0  Standard VGA mode
-           1  Color Expansion Mode
+           0  Set/Reset Output (Standard VGA) mode
+           1  Solid Color Expansion Mode
               A monochrome bitmap is expanded to color.
               For each bit of data written from the processor
               a zero bit causes the background color (3C4h index FBh)
@@ -269,7 +310,7 @@ bit   0  Unused
            2  Dithered ForeGround. The data from the processor is
               replaced by data from four Foreground Latches (3C4h index
               ECh to EFh). The normal VGA Read Latches function as normal.
-           3  Invalid
+           3  Uses Background Latch (transparent).
     4-7  Unused
 
 3C4h index FFh (R/W):  16 bit Interface Control
@@ -277,7 +318,7 @@ bit   0  16 bit memory if set
       1  16 bit I/O if set
       2  Fast Write Enabled if set
       3  16 bit ROM access if set
-      4  Enable bank selection
+      4  Enable bank selection (Access to memory >256K) if set.
     5-6  Cursor Pattern Page Select
          Select which 256k bank the cursor pattern is in.
       7  (Read only) Card in 8 or 16 bit slot
@@ -328,7 +369,7 @@ bit 0-2  Enable VGA PC/AT
              (3C2h/3CCh bit 5).
       Bit 16&17 are shared by read and write operations.
 
-    For Version 5 and above separate bank registers are available.
+    For Version 4 (HT208-A) and above separate bank registers are available.
     Both read and write banks exists.
 
 
@@ -354,9 +395,9 @@ bit 0-2  Enable VGA PC/AT
 
 
   Video Modes:
-    40h  T   80   43   2
-    41h  T  132   25   2
-    42h  T  132   43   2
+    40h  T   80   43  16
+    41h  T  132   25  16
+    42h  T  132   43  16
     43h  T   80   60  16
     44h  T  100   60  16
     45h  T  132   28  16
@@ -383,7 +424,7 @@ INT 10 - VIDEO - INSTALLATION CHECK (Video7 VGA,VEGA VGA)
 Return: BX = 5637h ('V7') indicates Video7 VGA/VEGA VGA extensions are present
            = 4850h ('HP') indicates HP Extended BIOS video functions present
 ----------106F01-----------------------------
-INT 10 - VIDEO - GET MONITOR INFO (Video7 VGA,VEGA VGA)
+INT 10 - VIDEO - Get Monitor Info (Video7 VGA,VEGA VGA)
         AX = 6F01h
 Return: AL = monitor type code (HP and VEGA VGA only) (values are for HP)
               00h  non-HP card with ROM and possibly its own INT 10h driver
@@ -408,7 +449,7 @@ Return: AL = monitor type code (HP and VEGA VGA only) (values are for HP)
              (HP, and only if AL=41h)
 Note: bits 0-3 are the same as the EGA/VGA status register bits 0-3
 ----------106F02-----------------------------
-INT 10 - VIDEO - HP Vectra (Video7 ?) - SET MONITOR INFO
+INT 10 - VIDEO - HP Vectra (Video7 ?) - Set Monitor Info
         AX = 6F02h
         BL = new value for extended control register
              Bit 0  Screen resolution (0: 200 lines, 1: 400)
@@ -418,26 +459,28 @@ INT 10 - VIDEO - HP Vectra (Video7 ?) - SET MONITOR INFO
                  3  Memory disabled for CPU access
                  4  Allow access to full 32K memory rather than wrap at 16K
                  5  Select 2nd 16K page rather than first
+Note: this function is only valid when an HP MultiMode Video Display Adapter
+      is installed. The Extended Control register is at I/O address 3DDh
 ----------106F03-----------------------------
-INT 10 - VIDEO - HP Vectra (Video7 ?) - MODIFY MONITOR INFO
+INT 10 - VIDEO - HP Vectra (Video7 ?) - Modify Monitor Info
         AX = 6F03h
         BH = Exclude mask (set bits are not modified)
         BL = new value for bits indicated in BH
              Result = ((old value) and BH) or ((not BH) and BL)
+Note: This function is only valid when an HP MultiMode Video Display Adapter
+      is installed
 ----------106F04-----------------------------
-INT 10 - VIDEO - GET MODE AND SCREEN RESOLUTION (Video7 VGA, VEGA VGA)
+INT 10 - VIDEO - Get Mode and Screen Resolution (Video7 VGA, VEGA VGA)
         AX = 6F04h
 Return: AL = current video mode (see AX=6F05h)
         BX = horizontal columns (text) or pixels (graphics)
         CX = vertical columns (text) or pixels (graphics)
 ----------106F05-----------------------------
-INT 10 - VIDEO - SET VIDEO MODE (Video7 VGA, VEGA EXTENDED EGA/VGA)
+INT 10 - VIDEO - Set Video Mode (Video7 VGA, VEGA EXTENDED EGA/VGA)
         AX = 6F05h
-        BL = mode (see below)
-
-Values for video mode:
- 00h-13h = standard IBM modes (see AH=00h)
- 40h-6Ah = see table above.
+        BL = mode:
+              00h-13h = standard IBM modes (see AH=00h)
+              40h-6Ah = see table above.
 ----------106F06-----------------------------
 INT 10 - VIDEO - SELECT AUTOSWITCH MODE (V7VGA,VEGA VGA)
         AX = 6F06h

@@ -1,27 +1,31 @@
   Realtek RT 3106    -  Upto 1 Mbyte.
 
+RTG3105  100pin
+RTG3106
+
 
 
 3CEh index 0Ah (R/W):
 
 3CEh index 0Bh (R/W):
-bit 0-1  Timing ?
+bit 0-1  Divide the Video Dot Clock by: 0: 1, 1: 1.5, 2: 2, 3: 4
 
-3CEh index  Ch (R/W):
+3CEh index 0Ch (R/W):
 bit   2  Always set ??
       4  If set doubles the number of pixels in a "character clock"
            Pixels per character clock:
                                   clear         set
             16color modes           8           16
            256color modes           4            8
-      5  Set if >1024 pixels in a scanline ??
+         Also there are two clock pulses per pixel.
+      5  Clock Select bit 2. Bits 0-1 are in 3C2h/3CCh bits 2-3.
       6  ??
 
 
-3CEh index  Fh (R/W): Extended Function.
+3CEh index 0Fh (R/W): Extended Function.
 bit   2  Single/Dual bank.
          If set 3D6h is the read bank number and 3D7h is the write bank
-         number. if clear 3D7h is used for both read and write operations.
+         number, if clear 3D7h is used for both read and write operations.
 
 3d4h index 19h (R/W):
 bit   0  Interlace enabled if set. If set the display offset in 3d4h index 13h
@@ -35,15 +39,16 @@ bit   0  Interlace enabled if set. If set the display offset in 3d4h index 13h
 3d4h index 1Ah:
 bit 6-7  Chip version.
            0 = Version 0  (RTG3103 ?)
-           1 = Version 1  (RTG31030/RTG3105 ?)
+           1 = Version 1  (RTG31030?/RTG3105)
            2 = Version 2  (RTG3106)
            3 = Version x ??
 
 3d4h index 1Eh:
 bit 0-1  Video Ram. If Chip version =0: 0=256k, 1=512k, 2=768k and 3=1MB
                     If chip version >0: 0=256k, 1=512k, 2=1MB and 3=2MB.
-      2  
-    4-7  
+      2
+    4-6
+      7  Must be set to access the extended CRTC registers ????
 
 3D4h index 1Fh (R/W):
 bit 0-1  Emulation mode: 0=VGA, 1=EGA, 2=CGA, 3=MDA

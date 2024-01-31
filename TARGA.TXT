@@ -509,7 +509,7 @@ bit  0-2  Reserved. Should be set to 0
           the lower 16 bits are used
        4  livePortSrc. If set the blender is fed from the border color
           registers or from VRAM, if clear live data is fed to the blender.
-       5  live8. Only active if bit 4 is set and 
+       5  live8. Only active if bit 4 is set and
        6  fgp. Controls the ForeGround processor used in conjugation with the
           chromakeyer.
        7  Reserved. Should be set to 0

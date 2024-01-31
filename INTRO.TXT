@@ -1,46 +1,17 @@
 Introduction.
 
-This is intended as a collection of documentation about all the various 
-display adapters for the IBM PC series (and relatives).
-This is NOT intended as an introduction to basic VGA programming. There are
-numerous books available on the subject with much better general VGA/graphics
-programming sections.
-Neither is this intended to cover benchmarking, highlevel graphics algorithms,
-graphics file formats or specific graphics programs.
+This is intended as a collection of documentation about all the various
+display adapters for the IBM PC series (and relatives). This is NOT intended
+as an introduction to basic VGA programming or as a ready-to-use library.
+There are numerous books available on the subject with much better general
+VGA/graphics programming sections. Neither is this intended to cover
+benchmarking, highlevel graphics algorithms, graphics file formats or specific
+graphics programs.
 
-This compilation (c) Copyright 1991-94 Finn Thoegersen. All Rights Reserved.
-You can redistribute the collection provided it is distributed unmodified in
-its entirety and these clauses are left intact. The programs - executables and
-source - can be left out if they are not meaningful for the intended audience.
-No fee, monies et cetera can be charged, except for normal connection, media,
-shipment and handling expenses.
-You are free to use the information herein and excerpts from the programs,
-provided that the source is credited (My name and the VGADOC2 package).
+This compilation (c) Copyright 1991-95 Finn Thoegersen. All Rights Reserved.
+See the file README.1ST for contact information and conditions for use and
+distribution. This file MUST be included unmodified in all distributions.
 
-In short you can redistribute and use the information. What you cannot do is
-charge for it (except as above) or change it (please communicate corrections
-and additions to me).
-
-No fees, monies et cetera is asked, however contributions in the form of
-information, documentation (datasheets/books, programmers refs...) relevant
-for this collection will be gratefully accepted and credited.
-
-I can be contacted at:
-
-Email:      jesperf@daimi.aau.dk           ;This is not my account, so please
-                                           ;include either Finn or VGADOC in
-                                           ;the subject: line
-
-Telephone:  +45 9751 3788                  ;Both the Phone and FAX are company
-                                           ;numbers, so please attention:
-FAX:        +45 9751 4050                  ;Finn Thoegersen
-                                           ;Also these numbers are different
-                                           ;from those given in VGADOC2
-
-Surface:    Finn Thoegersen
-            Nordbanevej 3 C
-            DK-7800 Skive
-            Denmark
 
 
 Terminology/style:
@@ -59,13 +30,11 @@ All register addresses, data values et cetera are given in hexadecimal.
      On some cards write operations can be done with a single OUTW
      instruction. This may fail on some cards or machines.
      ATI cards require the index to be updated before each access to
-     the dataport. 
+     the dataport.
 
 (R)   means the register is Read Only.
 (W)   means the register is Write Only.
 (R/W) means the register is both Readable and Writable.
-(r/W) means the register is Write Only on EGA cards and Read/Writable
-      on VGA cards.
 
 Sometimes the size of the registers is given as:
   W(R/W):   The register is 2 bytes (16 bits) long. If the register is
@@ -91,9 +60,9 @@ Pascal:         C:                  Assembler:         Description:
 
 x:byte;         unsigned char x;    x  DB ?            8 bit unsigned byte
 
-y:word;         unsigned int y;     y  DW ?            16 bit unsigned word. 
+y:word;         unsigned int y;     y  DW ?            16 bit unsigned word.
 
-z:integer;      int z;              z  DW ?            16 bit signed word. 
+z:integer;      int z;              z  DW ?            16 bit signed word.
 
 w:longint;      long w;             w  DD ?            32 bit signed Dword
 
@@ -102,7 +71,7 @@ s:string[20];   char s[21];         x DB 20 dup(?)     a 20 character string
 $ABCD           0xABCD              0ABCDh             The value 43981
                                                           (ABCD hex)
 
-x:=port[$3CC]   x=inp(0x3CC)        MOV DX,03CCh       Read an 8bit value from 
+x:=port[$3CC]   x=inp(0x3CC)        MOV DX,03CCh       Read an 8bit value from
                                     IN AL,DX           I/O port $3CC.
 
 y:=portw[$3CE]  y=inpw(0x3CE)       MOV DX,03CEh       Read a 16bit value from
@@ -119,12 +88,16 @@ a shr 3         a>>3                SHR AX,3           Shifts a 3 bits rights
 
 a shl 3         a<<3                SHL AX,3           Shifts a 3 bits left
 
+inc(a)          a++                 INC [a]            Increments a by 1
+
+dec(a)          a--                 DEC [a]            Decrements a by 1
+
 {Comment}       /* comment */       ;comment           Comments.
 'string'        "string"            DB "string"        Text string
 
 procedure x;    void x(void)        x PROC             A procedure/function
 var x:integer;    {                  ;Alloc x on stack with no parameters
-begin               int x;           _code_            a local variable  
+begin               int x;           _code_            a local variable
   _code_            _code_           ;reset stack      and main body.
 end;              }                  RET
 
@@ -132,8 +105,7 @@ function y:     int y(void)        Well you            A function returning
   integer;        {                figure it out!      an integer.
 begin
   y:=123;           return(123)
-end;              }   
-
+end;              }
 
 
 
@@ -164,7 +136,7 @@ function testinx(pt,rg:word):boolean;  {Returns true if all 8 bits of register
 
 function testinx2(pt,rg,msk:word):boolean;
                                    {Returns true if the bits specified in MSK
-                                    are read/writable in register PT index RG} 
+                                    are read/writable in register PT index RG}
 
 procedure dac2pel;                 {Forces the DAC back to PEL (normal) mode}
 
@@ -178,6 +150,9 @@ References:
 Richard F. Ferraro's Programmer's guide to the EGA and VGA cards 2nd ed.
 Addison-Wesley 1990. ISBN 0-201-57025-4.
 
+Richard F. Ferraro's Programmer's guide to the EGA, VGA  and Super VGA cards:
+ including XGA cards, 3rd ed. Addison-Wesley 1994. ISBN 0-201-62490-7.
+
 George Sutty and Steve Blair's Advanced Programmers Guide to Super VGAs.
 Brady Books 1990. ISBN 0-13-010455-8.
 
@@ -187,8 +162,8 @@ Windcrest/McGraw-Hill 1990. ISBN 0-8306-3434-3.
 Jake Richter's Power Programming the IBM XGA.
 MIS Press 1992. ISBN 1-55828-127-4 (1-55828-124-9 with disc).
 
-Ralf Brown's interrupt list version 38.
-    (Simtel: info/inter38a.zip - info/inter38d.zip)
+Ralf Brown's interrupt list version 47.
+    (Simtel: info/inter47a.zip - info/inter47f.zip)
   This is based on contributions from many people, including:
     Dennis Grinberg    dennis+@cs.cmu.edu         MCGA/VGA
     Michael A. Moran   Michael@cup.portal.com     VGA INT 10h
@@ -227,7 +202,7 @@ Configuration files and drivers from amongst others:
   VUIMAGE:      (Simtel:  gif/vuimg340.zip)
   SVGA:         (Simtel:  gif/svga112.zip)
 
-XFree86 2.0 - X11 Unix SVGA driver. Available from:
+XFree86 3.1.2 - X11 Unix SVGA driver. Available from:
    ftp.x.org:             /contrib/XFree86
    ftp.physics.su.oz.au:  /XFree86
    ftp.win.tue.nl:        /pub/XFree86
@@ -248,23 +223,55 @@ PCVISION plus Frame Grabber User's Manual.
 
 Enhanced Graphics Adapter Reference Manual from HP.
 
-Data Sheet for the Yamaha 6388 VPDC.
-
 Commodore Advanced Graphics Adapter (AGA) manual.
 
-Chips and Technologies Inc datasheets for:
+Data sheet for the Analog Devices ADV7160,ADV7162
+
+Data sheets for the Chips and Technologies Inc
    82c455A, 82c456, 82c457, 82c480, 65520/530, 82c425, 82c426, 82c9001A.
+
+Technical Reference Manual for the Cirrus Logic CL-GD542x True Color VGA
+ Family, January 1994
+
+Data sheet for the IC Designs ICD2061A
+
+Data sheets for the MUSIC MU9c1880 and MU9c9750
+
+Data sheets for the NCR 77c22E+ and 77c32BLT
+
+Data sheets for the S3 86c911, 86c801/5, 86c928 and 86c964
+
+Data sheet for the Tseng ET3000 and ET4000/W32
+
+Data sheets for the Western Digital PVGA1A and WD90c24A
+
+Data sheet for the Yamaha 6388 VPDC.
+
+Programmer's Guide to the Mach32 Registers (ATI P/N: REG688000-15)
+VGA Wonder Programmer's Reference Manual (ATI P/N: PRG2888000-13)
+ATI Mouse Driver Programmer's Reference Manual (ATI P/N: PRG188200-12)
+Mach64 BIOS Kit (P/N: BIO-C012XX1-04), VGA Register Guide (P/N:
+ VGA-C012XX1-04), Register Reference Guide (P/N: RRG-C012XX1-04) and
+ Programmer's Guide (P/N: PRG-C012XX1-04)
 
 Truevision Targa+ Hardware Technical Reference Manual.
 
-The following have contributed information:
+Device Drivers Kit (DDK)'s for Microsoft Windows 3.1, Windows for Workgroups
+ 3.11, Windows NT 3.51 and Windows 95 (pre-release).
 
+
+The following have donated reference material:
+H.R.R van Roosmalen and E. Zoer,
+   Delft University of Technology,
+   The Netherlands    huub@dutetvd.ET.TUDelft.NL  (no longer valid)
+Kendall Bennett       kjb@cgl.citri.edu.au
+Joel Finch            jfinch@ozemail.com.au
+Wieland Weiss         weiss@metw3.met.fu-berlin.de
+
+The following have contributed information:
 Darren Senn           sinster@scintilla.capitola.ca.us
 Tomi H Engdahl        then@vipunen.hut.fi
 Jori Hamalainen       jhamala@kannel.lut.fi
-H.R.R van Roosmalen and E. Zoer,
-   Delft University of Technology,
-   The Netherlands    huub@dutetvd.ET.TUDelft.NL
 Eric ??               praetzel@marconi.uwaterloo.ca
 Frank Klemm           pfk@rz.uni-jena.de
 Michael Schindler     michael@eichow.tuwien.ac.at
@@ -272,6 +279,8 @@ Kendall Bennett       kjb@cgl.citri.edu.au
 Danny Halamish        dny@cs.huji.ac.il
 Daniel Sill           sill@zoe.as.utexas.edu
 GARY                  GEM@rellim.com
+Paolo Severini        lendl@dist.dist.unige.it
+Royce Shih Wea Liao   liaor@umich.edu
 
 Testers:
 Ross Ackland          rackland@csis.dit.csiro.au
@@ -291,6 +300,7 @@ Jouni Miettunen       jon@stekt.oulu.fi
 Jack Nomssi           Nomssi@physik.tu-chemnitz.de
 Juho-Pekka Rosti      atjuro@uta.fi
 Lode Vande Sande      stud11@cc4.kuleuven.ac.ec
+Joel Finch            jfinch@ozemail.com.au
 
 
 
@@ -302,19 +312,29 @@ Use at your own risk.
 
 
 
-IBM PC, PC/XT, PC/AT, PCjr, PS/2, Micro Channel, Personal System/2,Enhanced Graphics Adapter, Color Graphics Adapter, Video Graphics Adapter, IBM Color Display, IBM Monochrome Display, 8514/A and XGA are trademarks of International Business Machines Corporation.
+IBM PC, PC/XT, PC/AT, PCjr, PS/2, Micro Channel, Personal System/2,Enhanced
+Graphics Adapter, Color Graphics Adapter, Video Graphics Adapter, IBM Color
+Display, IBM Monochrome Display, 8514/A and XGA are trademarks of
+International Business Machines Corporation.
 MS-DOS, Microsoft and Windows are trademarks of Microsoft, Incorporated.
 Hercules is a trademark of Hercules Computer Technology, Inc.
 Multisync is a trademark of Nippon Electric Company (NEC).
+ATI, VGAWonder, Mach8, Mach32, 8514 ULTRA, GRAPHICS ULTRA, GRAPHICS VANTAGE,
+GRAPHICS ULTRA+ and GRAPHICS ULTRA PRO are trademarks of ATI Technologies Inc.
 Brooktree and RAMDAC are trademarks of Brooktree Corporation.
 SMARTMAP is a trademark of Chips and Technologies, Incorporated.
 TARGA is a registered trademark of Truevision, Inc.
-Cirrus Logic is a trademark of Cirrus Logic, Inc.
+Cirrus Logic and SimulSCAN are trademarks of Cirrus Logic, Inc.
 HiColor is a trademark of Sierra Semiconducter, Inc.
 i386, i486 and Intel are trademarks of Intel Corp.
-Inmos and SGS-Thomson are trademarks of SGS-Thomson, Ltd.
+Inmos and SGS-Thompson are trademarks of SGS-Thompson, Ltd.
 IIT is a trademark of Integrated Information Technology, Inc.
 Motorola is a trademark of Motorola Corp.
 TIGA is a trademark of Texas Instruments.
-VBE, VESA and VSE are trademarks of the Video Electronics Standards Association.
-All other product names are copyright and registered trademarks/tradenames of their respective owners.
+VBE, VESA and VSE are trademarks of the Video Electronics Standards
+Association.
+Western Digital, AutoSwitch and TrueShade are trademarks of Western Digital
+Corporation.
+WEITEK and WEITEK Power are trademarks of WEITEK Corporation
+All other product names are copyright and registered trademarks/tradenames of
+their respective owners.

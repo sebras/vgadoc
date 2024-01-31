@@ -1,5 +1,8 @@
   Yamaha 6388 VPDC
 
+The Yamaha 6388 VPDC is a LCD/Plasma VGA controller. Only supports standard
+VGA modes
+
 
 3C2h (R): Misc Output Register
 bit 2-3  Select Master Clock

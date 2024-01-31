@@ -1,4 +1,20 @@
-History of changes:
+
+29/Sep/95:
+VGADOC4 and WHATVGA 2.00 released
+Added S3 964 info
+Added Analog Devices ADV7160/7162 info
+Added Matrox MGA info
+Added VESA 2.0 and PCI info
+Added Alliance and SiS info
+Split ET3000/4000 info in Tseng.txt
+
+10/Jul/95:
+Pre-release for VGADOC4 and WHATVGA v1.80
+Updated Tseng ET4000/W32, NCR, S3, Mach32 and Avance Logic info
+Updated WD90c24A info
+Updated Cirrus CL-GD6440 info
+Compaq BIOS calls updated
+Added ATI Mach64 info
 
 18/jan/94:
 VGADOC3 and WHATVGA 1.50 released.

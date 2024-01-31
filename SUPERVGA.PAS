@@ -1,338 +1,14 @@
+
 unit supervga;
 
 interface
 uses dos;
 
-type
-  str10=string[10];
 
-  mmods=(_text,
-         _text2,
-         _text4,
-         _pl2 ,   {plain mono, 8 pixels per byte}
-         _pl2e,   {mono odd/even, 8 pixels per byte, two planes}
-         _herc,   {Hercules mono, 4 "banks" of 8kbytes}
-         _cga2,   {CGA 2 color, 2 "banks" of 16kbytes}
-         _cga4,   {CGA 4 color, 2 "banks" of 16kbytes}
-         _pl4 ,   {4 color odd/even planes}
-         _pk4 ,   {4 color "packed" pixels 4 pixels per byte}
-         _pl16,   {std EGA/VGA 16 color: 4 planes, 8 pixels per byte}
-         _pk16,   {ATI mode 65h two 16 color pixels per byte}
-         _p256,   {one 256 color pixel per byte}
-         _p32k,   {Sierra 15 bit}
-         _p64k,   {Sierra 16bit/XGA}
-         _p16m);  {RGB 3bytes per pixel}
 
-  modetype=record
-             md,xres,yres,bytes:word;
-             memmode:mmods;
-           end;
+  {$i defvga.pas}   {Definitions}
 
-  CHIPS=(__EGA,__VGA,__chips451,__chips452,__chips453,__paradise,__video7
-        ,__tseng3,__tseng4,__tridBR,__tridCS,__trid89,__everex,__ati1,__ati2
-        ,__genoa,__oak,__cirrus,__aheadA,__aheadB,__ncr,__yamaha,__poach
-        ,__s3,__al2101,__acumos,__mxic,__vesa,__realtek,__p2000,__cirrus54
-        ,__none);
-
-
-const
-  colbits:array[mmods] of integer=
-               (0,0,0,1,1,1,1,2,2,2,4,4,8,15,16,24);
-  modecols:array[mmods] of longint=
-               (0,0,0,2,2,2,2,4,4,4,16,16,256,32768,65536,16777216);
-
-  mdtxt:array[mmods] of string[210]=('Text','2 color Text','4 color Text'
-                ,'Monochrome','2 colors planar','Hercules','CGA 2 color','CGA 4 color'
-                ,'4 colors planar','4 colors packed','16 colors planar','16 colors packed'
-                ,'256 colors packed','32768 colors','65536 colors'
-                ,'16777216 colors');
-
-  mmodenames:array[mmods] of string[4]=('TXT ','TXT2','TXT4','PL2 ','PL2E','HERC'
-              ,'CGA2','CGA4','PL4 ','PK4 ','PL16','PK16','P256','P32K','P64K','P16M');
-
-
-  header:array[CHIPS] of string[14]=
-         ('EGA','VGA','Chips&Tech','Chips&Tech','Chips&Tech'
-         ,'Paradise','Video7','ET3000','ET4000'
-         ,'Trident','Trident','Trident','Everex','ATI','ATI'
-         ,'Genoa','Oak','Cirrus','Ahead','Ahead','NCR'
-         ,'Yamaha','Poach','S3','AL2101','Acumos','MXIC'
-         ,'VESA','Realtek','PRIMUS','Cirrus54','');
-
-
-  novgamodes=10;
-  stdmodetbl:array[1..novgamodes] of modetype=
-            ((md: 4;xres:320;yres:200;bytes: 80;memmode:_cga4)
-            ,(md: 5;xres:320;yres:200;bytes: 80;memmode:_cga4)
-            ,(md: 6;xres:640;yres:200;bytes: 80;memmode:_cga2)
-            ,(md:13;xres:320;yres:200;bytes: 40;memmode:_pl16)
-            ,(md:14;xres:640;yres:200;bytes: 80;memmode:_pl16)
-            ,(md:15;xres:640;yres:350;bytes: 80;memmode:_pl2)
-            ,(md:16;xres:640;yres:350;bytes: 80;memmode:_pl16)
-            ,(md:17;xres:640;yres:480;bytes: 80;memmode:_pl2)
-            ,(md:18;xres:640;yres:480;bytes: 80;memmode:_pl16)
-            ,(md:19;xres:320;yres:200;bytes:320;memmode:_p256));
-
-
-
-  _dac0     =0;   {No DAC (MDA/CGA/EGA ..}
-  _dac8     =1;   {Std VGA DAC 256 cols.}
-  _dac15    =2;   {Sierra 32k DAC}
-  _dac16    =3;   {Sierra 64k DAC}
-  _dacss24  =4;   {Sierra?? 24bit RGB DAC}
-  _dacatt   =5;   {ATT 20c491/2  15/16/24 bit DAC}
-  _dacADAC1 =6;   {Acumos ADAC1  15/16/24 bit DAC}
-
-
-
-
-  vesa:word=0;
-
-
-
-var
-  rp:registers;
-
-  memmode:mmods;   {current memory mode}
-  vseg:word;       {Video buffer base segment}
-  video:string[5];
-  mm:word;         {Video memory in kilobytes}
-  CHIP:CHIPS;
-  dacname:string[20];
-  dactype:word;
-  crtc:word;       {I/O address of CRTC registers}
-  _crt:string[20];
-  secondary:string[20];
-  extra:string[80];
-  name:string[40];
-
-  curmode:word;    {Current mode number}
-  pixels:word;     {Pixels in a scanline in current mode}
-  lins:word;       {lines in current mode}
-  bytes:longint;   {bytes in a scanline}
-  planes:word;     {number of video planes}
-
-
-  nomodes:word;
-  modetbl:array[1..30] of modetype;
-
-
-  vesarec:record
-            attr:word;
-            wina,winb:byte;
-            gran,winsiz,sega,segb:word;
-            pagefunc:pointer;
-            bytes,width,height:word;
-            charw,charh,planes,bits,nbanks,model,banks:byte;
-            x:array[byte] of byte;    {might get trashed by 4F01h}
-          end;
-
-
-  dotest:array[CHIPS] of boolean;
-
-
-
-
-
-function strip(s:string):string;       {strip leading and trailing spaces}
-function upstr(s:string):string;       {convert a string to upper case}
-function istr(w:longint):str10;
-function hex2(w:word):str10;
-function hex4(w:word):str10;
-
-
-procedure vio(ax:word);         {INT 10h reg ax=AX. other reg. set from RP
-                                 on return rp.ax=reg AX}
-
-function inp(reg:word):byte;     {Reads a byte from I/O port REG}
-
-procedure outp(reg,val:word);    {Write the low byte of VAL to I/O port REG}
-
-function rdinx(pt,inx:word):word;       {read register PT index INX}
-
-procedure wrinx(pt,inx,val:word);       {write VAL to register PT index INX}
-
-procedure modinx(pt,inx,mask,nwv:word);  {In register PT index INX sets
-                                          the bits in MASK as in NWV
-                                          the other are left unchanged}
-
-procedure setbank(bank:word);
-
-procedure setvstart(l:longint);       {Set the display start address}
-
-function setmode(md:word):boolean;
-
-procedure vesamodeinfo(md:word);
-
-procedure dactocomm;
-
-procedure dactopel;
-
-procedure findvideo;
-
-
-implementation
-
-
-const
-  mmmask :array[0..8] of byte=(0,0,0,0,1,3,3,7,15);
-
-  hx:array[0..15] of char='0123456789ABCDEF';
-
-
-
-
-
-
-var
-
-  atireg:word;    {ATI extended registers}
-
-  old,curbank:word;
-
-  biosseg:word;
-  vgran:word;
-
-
-
-function strip(s:string):string;       {strip leading and trailing spaces}
-begin
-  while s[length(s)]=' ' do dec(s[0]);
-  while copy(s,1,1)=' ' do delete(s,1,1);
-  strip:=s;
-end;
-
-function upstr(s:string):string;       {convert a string to upper case}
-var x:word;
-begin
-  for x:=1 to length(s) do
-    s[x]:=upcase(s[x]);
-  upstr:=s;
-end;
-
-function istr(w:longint):str10;
-var s:str10;
-begin
-  str(w,s);
-  istr:=s;
-end;
-
-function hex2(w:word):str10;
-begin
-  hex2:=hx[(w shr 4) and 15]+hx[w and 15];
-end;
-
-function hex4(w:word):str10;
-begin
-  hex4:=hex2(hi(w))+hex2(lo(w));
-end;
-
-
-
-procedure vio(ax:word);         {INT 10h reg ax=AX. other reg. set from RP
-                                 on return rp.ax=reg AX}
-begin
-  rp.ax:=ax;
-  intr(16,rp);
-end;
-
-function inp(reg:word):byte;     {Reads a byte from I/O port REG}
-begin
-  reg:=port[reg];
-  inp:=reg;
-end;
-
-procedure outp(reg,val:word);    {Write the low byte of VAL to I/O port REG}
-begin
-  port[reg]:=val;
-end;
-
-
-function rdinx(pt,inx:word):word;       {read register PT index INX}
-var x:word;
-begin
-  if pt=$3C0 then x:=inp($3DA);    {If Attribute Register then reset Flip-Flop}
-  outp(pt,inx);
-  rdinx:=inp(pt+1);
-end;
-
-procedure wrinx(pt,inx,val:word);       {write VAL to register PT index INX}
-begin
-  outp(pt,inx);
-  outp(pt+1,val);
-end;
-
-procedure modinx(pt,inx,mask,nwv:word);  {In register PT index INX sets
-                                          the bits in MASK as in NWV
-                                          the other are left unchanged}
-var temp:word;
-begin
-  temp:=(rdinx(pt,inx) and not mask)+(nwv and mask);
-  wrinx(pt,inx,temp);
-end;
-
-
-function getbios(offs,lnn:word):string;
-var s:string;
-begin
-  s[0]:=chr(lnn);
-  move(mem[biosseg:offs],s[1],lnn);
-  getbios:=s;
-end;
-
-function tstrg(pt,msk:word):boolean;       {Returns true if the bits in MSK
-                                            of register PT are read/writable}
-var old,nw1,nw2:word;
-begin
-  old:=inp(pt);
-  outp(pt,old and not msk);
-  nw1:=inp(pt) and msk;
-  outp(pt,old or msk);
-  nw2:=inp(pt) and msk;
-  outp(pt,old);
-  tstrg:=(nw1=0) and (nw2=msk);
-end;
-
-function testinx2(pt,rg,msk:word):boolean;   {Returns true if the bits in MSK
-                                              of register PT index RG are
-                                              read/writable}
-var old,nw1,nw2:word;
-begin
-  old:=rdinx(pt,rg);
-  wrinx(pt,rg,old and not msk);
-  nw1:=rdinx(pt,rg) and msk;
-  wrinx(pt,rg,old or msk);
-  nw2:=rdinx(pt,rg) and msk;
-  wrinx(pt,rg,old);
-  testinx2:=(nw1=0) and (nw2=msk);
-end;
-
-function testinx(pt,rg:word):boolean;     {Returns true if all bits of
-                                           register PT index RG are
-                                           read/writable.}
-var old,nw1,nw2:word;
-begin
-  testinx:=testinx2(pt,rg,$ff);
-end;
-
-procedure dactopel;    {Force DAC back to PEL mode}
-begin
-  if inp($3c8)=0 then;
-end;
-
-var
-  daccomm:word;
-
-procedure dactocomm;    {Enter command mode of HiColor DACs}
-var x:word;
-begin
-  dactopel;
-  x:=inp($3c6);
-  x:=inp($3c6);
-  x:=inp($3c6);
-  daccomm:=inp($3c6);
-end;
-
+{$i idvga.pas}
 
 
 
@@ -341,37 +17,95 @@ end;
 procedure setbank(bank:word);
 var x:word;
 begin
-  vseg:=$a000;
   if bank=curbank then exit;   {Only set bank if diff. from current value}
+  vseg:=$a000;
+  curbank:=bank;
   case chip of
-    __acumos:modinx($3ce,9,$f0,bank shl 4);
     __aheadA:begin
-               wrinx($3ce,13,bank shr 1);
+               wrinx(GRC,13,bank shr 1);
                x:=inp($3cc) and $df;
                if odd(bank) then inc(x,32);
                outp($3c2,x);
              end;
-    __aheadB:wrinx($3ce,13,bank*17);
-    __al2101:outp($3d7,bank);
-      __ati1:modinx(atireg,$b2,$1e,bank shl 1);
-      __ati2:modinx(atireg,$b2,$ee,bank*$22);
-  __chips451:wrinx(crtc+2,11,bank);
-  __chips452:wrinx(crtc+2,16,bank shl 2);
-  __chips453:wrinx(crtc+2,16,bank shl 4);
+    __aheadB:wrinx(GRC,13,bank*17);
+    __al2101:begin
+               outp($3d7,bank);
+               outp($3D6,bank);
+             end;
+      __ati1:modinx(IOadr,$b2,$1e,bank shl 1);
+      __ati2:begin
+               x:=bank*$22;          {Roll bank nbr into bit 0}
+               modinx(IOadr,$b2,$ff,hi(x) or lo(x));
+             end;
+    __atiGUP:begin
+               x:=(bank and 15)*$22;          {Roll bank nbr into bit 0}
+               modinx(IOadr,$b2,$ff,hi(x) or lo(x));
+               modinx(IOadr,$AE,3,bank shr 4);
+             end;
+  __chips451:wrinx(IOadr,$B,bank);
+  __chips452:begin
+               if memmode<=_pl4 then bank:=bank shl 2;
+               wrinx(IOadr,$10,bank shl 2);
+             end;
+  __chips453:begin
+               if memmode<=_pl4 then bank:=bank shl 2;
+               wrinx(IOadr,$10,bank shl 4);
+             end;
+     __cir54:begin
+               if (rdinx(GRC,$B) and 32)=0 then bank:=bank shl 2;
+               wrinx(GRC,9,bank shl 2);
+             end;
+     __cir64:begin
+               bank:=bank shl 4;
+               wrinx(GRC,$E,bank);
+               wrinx(GRC,$F,bank);
+             end;
+    __compaq:begin
+               wrinx(GRC,$f,5);
+               bank:=bank shl 4;
+               wrinx(GRC,$45,bank);
+               if (rdinx(GRC,$40) and 1)>0 then inc(bank,8);
+               wrinx(GRC,$46,bank);
+             end;
+    __ET3000:outp($3cd,bank*9+64);
+    __Weitek,
+    __ET4000:outp($3cd,bank*17);
+    __ET4w32:begin
+               outp($3cd,(bank and 15)*17);
+               outp($3cb,(bank shr 4)*17);
+             end;
     __everex:begin
                x:=inp($3cc) and $df;
                if (bank and 2)>0 then inc(x,32);
                outp($3c2,x);
-               modinx($3c4,8,$80,bank shl 7);
+               modinx(SEQ,8,$80,bank shl 7);
              end;
-     __genoa:wrinx($3c4,6,bank*9+64);
-      __mxic:wrinx($3c4,$c5,bank*17);
+     __genoa:wrinx(SEQ,6,bank*9+64);
+       __HMC:begin
+               if memmode=_p8 then modinx(SEQ,$EE,$70,bank shl 4)
+               else if bank=0 then vseg:=$A000 else vseg:=$B000;
+             end;
+    __iitagx:if (inp(IOadr) and 4)>0 then outp(IOadr+8,bank)
+             else begin
+               wrinx(SEQ,$B,0);
+               if rdinx(SEQ,$B)=0 then;
+               modinx(SEQ,$E,$f,bank xor 2);
+             end;
+      __mxic:wrinx(SEQ,$c5,bank*17);
        __ncr:begin
-               if memmode<=_pl16 then bank:=bank shl 2;
-               wrinx($3c4,$18,bank shl 2);
+               if memmode<=_pl4 then bank:=bank shl 2;
+               wrinx(SEQ,$18,bank shl 2);
+               wrinx(SEQ,$1C,bank shl 2);
              end;
-       __oak:wrinx($3de,17,bank*17);
-  __paradise:wrinx($3ce,9,bank shl 4);
+       __oak:wrinx($3de,$11,bank*17);
+     __oak87:begin
+               wrinx($3DE,$23,bank);
+               wrinx($3DE,$24,bank);
+             end;
+  __paradise:begin
+               wrinx(GRC,9,bank shl 4);
+               wrinx(GRC,$A,bank shl 4);
+             end;
 
      __p2000,
    __realtek:begin
@@ -380,67 +114,164 @@ begin
              end;
         __s3:begin
                wrinx(crtc,$38,$48);
-               modinx(crtc,$31,9,9);
-               if memmode=_pl16 then bank:=bank*4;
+               wrinx(crtc,$39,$A5);
+               setinx(crtc,$31,9);
+               if memmode<=_pl4 then bank:=bank*4;
                modinx(crtc,$35,$f,bank);
+               modinx(crtc,$51,$C,bank shr 2);
+               wrinx(crtc,$39,$5A);
                wrinx(crtc,$38,0);
              end;
-    __tridBR:;
-    __tridCS,__poach,__trid89
-            :begin
-               wrinx($3c4,11,0);
-               if rdinx($3c4,11)=0 then;
-               modinx($3c4,14,$f,bank xor 2);
+    __tridBR:begin
+               modinx(SEQ,$E,6,bank);
+               if (bank and 1)>0 then vseg:=$B000 else vseg:=$A000;
              end;
-    __tseng3:outp($3cd,bank*9+64);
-    __tseng4:outp($3cd,bank*17);
-    __video7:begin
+    __tridCS,__poach,__trid89
+            :if version=TR_8900CL then outp($3D8,bank)
+             else begin
+        (*       wrinx(SEQ,$B,0);
+               if rdinx(SEQ,$B)=0 then;  {New mode}
+               modinx(SEQ,$E,$f,bank xor 2);  *)
+               wrinx(SEQ,$B,0);
+               if rdinx(SEQ,$B)=0 then;  {New mode}
+               if (memmode<=_pl4) and (bank>1) then inc(bank,2);
+               modinx(SEQ,$E,$f,bank xor 2);
+             end;
+    __video7:if Version<V7_208A then
+             begin
                x:=inp($3cc) and $df;
                if (bank and 2)>0 then inc(x,32);
                outp($3c2,x);
-               modinx($3c4,$f9,1,bank);
-               modinx($3c4,$f6,$80,(bank shr 2)*5);
-
+               modinx(SEQ,$f9,1,bank);
+               modinx(SEQ,$f6,$80,(bank shr 2)*5);
+             end
+             else begin
+               wrinx(SEQ,$E8,bank);
+               wrinx(SEQ,$E9,bank);
              end;
-  __cirrus54:wrinx($3CE,9,bank*16);
+       __UMC:wrinx(SEQ,6,bank*17);
       __vesa:begin
                rp.bx:=0;
-               rp.dx:=bank*longint(64) div vgran;
+               bank:=bank*longint(64) div vgran;
+               rp.dx:=bank;
                vio($4f05);
                rp.bx:=1;
+               rp.dx:=bank;
                vio($4f05);
              end;
+ __xbe,__xga:outp(IOadr+8,bank);
+  __WeitekP9:outp($3CD,bank or $20);
   end;
-  curbank:=bank;
+end;
+
+procedure setRbank(bank:word);
+var x:word;
+begin
+  curbank:=$FFFF;    {always flush}
+  case chip of
+   __aheadB:modinx(GRC,$D,$F,bank);
+   __al2101:outp($3D6,bank);
+     __ati2:begin
+              x:=bank shl 5;          {Roll bank nbr into bit 0}
+              modinx(IOadr,$b2,$e1,hi(x) or lo(x));
+            end;
+   __atiGUP:begin
+              x:=(bank and 15) shl 5;          {Roll bank nbr into bit 0}
+              modinx(IOAdr,$b2,$e1,hi(x) or lo(x));
+              modinx(IOadr,$AE,$C,bank shr 2);
+            end;
+    __cir64:wrinx(GRC,$E,bank shl 4);
+   __ET3000:modreg($3CD,$38,bank shl 3);
+   __Weitek,
+   __ET4000:modreg($3CD,$F0,bank shl 4);
+   __ET4w32:begin
+              modreg($3cd,$F0,bank shl 4);
+              modreg($3cb,$F0,bank);
+            end;
+     __mxic:modinx(SEQ,$C5,$f0,bank shl 4);
+      __ncr:begin
+               if memmode<=_pl4 then bank:=bank shl 2;
+               wrinx(SEQ,$1C,bank shl 2);
+            end;
+      __oak:modinx($3de,$11,$f,bank);
+    __oak87:wrinx($3DE,$23,bank);
+ __paradise:wrinx(GRC,9,bank shl 4);
+    __p2000:outp($3D7,bank);
+  __realtek:outp($3D6,bank);
+   __Video7:wrinx(SEQ,$E9,bank);
+      __UMC:modinx(SEQ,6,$F,bank);
+  end;
 end;
 
 
-procedure vesamodeinfo(md:word);
+
+procedure vesamodeinfo(md:word;vbe1:_vbe1p);
+const
+  width :array[$100..$11b] of word=
+      (640,640,800,800,1024,1024,1280,1280,80,132,132,132,132
+      ,320,320,320,640,640,640,800,800,800,1024,1024,1024,1280,1280,1280);
+  height:array[$100..$11b] of word=
+      (400,480,600,600, 768, 768,1024,1024,60, 25, 43, 50, 60
+      ,200,200,200,480,480,480,600,600,600, 768, 768, 768,1024,1024,1024);
+  bits  :array[$100..$11b] of byte=
+      (  8,  8,  4,  8,   4,   8,   4,   8, 0,  0,  0,  0,  0
+      , 15, 16, 24, 15, 16, 24, 15, 16, 24,  15,  16,  24,  15,  16,  24);
+
+
+var
+  vbxx:_vbe1;
 begin
-  rp.cx:=md;
-  rp.es:=seg(vesarec);
-  rp.di:=ofs(vesarec);
-  vio($4f01);
-  vgran:=vesarec.gran;
-  bytes:=vesarec.bytes;
-  pixels:=vesarec.width;
-  lins:=vesarec.height;
-  case vesarec.bits of
-    4:memmode:=_pl16;
-    8:memmode:=_p256;
-   15:memmode:=_p32k;
-   16:memmode:=_p64k;
-   24:memmode:=_p16m;
+  if vbe1=NIL then vbe1:=@vbxx;
+  fillchar(vbe1^,sizeof(_vbe1),0);
+  viop($4f01,0,md,0,vbe1);
+  if ((vbe1^.attr and 2)=0) and (md>=$100) and (md<=$11b)
+   then  (* optional info missing *)
+  begin
+    vbe1^.width :=width[md];
+    vbe1^.height:=height[md];
+    vbe1^.bits  :=bits[md];
   end;
+
+
+  vgran :=vbe1^.gran;
+  bytes :=vbe1^.bytes;
+  pixels:=vbe1^.width;
+  lins  :=vbe1^.height;
+end;
+
+
+procedure initxga;
+var xbe1:_xbe1;
+  phadr:longint;
+  x:word;
+begin
+  outp(IOAdr+1,1);
+  modreg(IOadr+9,$8,0);
+
+  mem [xgaseg:$12]:=1;
+  meml[xgaseg:$14]:=phadr;
+  memw[xgaseg:$18]:=pixels;
+  memw[xgaseg:$1A]:=lins;
+  case memmode of
+   _pk4:x:=2;
+    _p8:x:=3;
+   _p16:x:=4;
+  end;
+  mem [xgaseg:$1C]:=x;
+
 end;
 
 function safemode(md:word):boolean;
 var x,y:word;
 begin                 {Checks if we entered a Graph. mode}
-  vio(3);
+  safemode:=false;
+  wrinx(crtc,$11,0);
+  wrinx(crtc,1,0);
   vio(lo(md));
-  y:=rdinx($3ce,6);
-  safemode:=odd(y);
+  if (rdinx(crtc,1)<>0) or (rdinx(crtc,$11)<>0) then
+  begin
+    if (md<=$13) or (mem[0:$449]<>3) then safemode:=true;
+  end;
 end;
 
 function tsvio(ax,bx:word):boolean;   {Tseng 4000 Hicolor mode set}
@@ -450,87 +281,44 @@ begin
   tsvio:=rp.ax=16;
 end;
 
+function setATImode(md:word):boolean;
+begin
+  rp.bx:=$5506;
+  rp.bp:=$ffff;
+  rp.si:=0;
+  vio($1200+md);
+  if rp.bp=$ffff then setATImode:=false
+  else begin
+    vio(md);
+    setATImode:=true;
+  end;
+end;
+
 function setmode(md:word):boolean;
-var x:word;
+var x,y,prt:word;
 begin
   setmode:=true;
   curmode:=md;
   case chip of
-__ati1,__ati2:begin
-                rp.bx:=$5506;
-                rp.bp:=$ffff;
-                rp.si:=0;
-                vio($1200+md);
-                if rp.bp=$ffff then setmode:=false
-                else vio(md);
-              end;
-   __chips451:begin
-                setmode:=safemode(md);
-                x:=inp($46e8);
-                outp($46e8,x or 16);
-                outp($103,inp($103) or $80);
-                outp($46e8,x and $ef);
-                modinx(crtc+2,4,4,4);
-                modinx(crtc+2,11,3,1);
-              end;
-   __chips452,__chips453:
-              begin
-                setmode:=safemode(md);
-                x:=inp($46e8);
-                outp($46e8,x or 16);
-                outp($103,inp($103) or $80);
-                outp($46e8,x and $ef);
-                modinx(crtc+2,4,4,4);
-                modinx(crtc+2,11,3,1);
-                wrinx(crtc+2,12,0);
-              end;
-     __everex:begin
-                rp.bl:=md;
-                vio($70);
-              end;
-   __paradise:begin
-                setmode:=safemode(md);
-                modinx($3ce,15,$17,5);
-                wrinx(crtc,$29,$85);
-                modinx($3ce,$b,8,0);
-                modinx(crtc,$2f,$62,0);
-              end;
-        __ncr:begin
-                setmode:=safemode(md);
-                wrinx($3c4,5,5);
-                wrinx($3c4,$18,0);
-                wrinx($3c4,$19,0);
-                wrinx($3c4,$1a,0);
-                wrinx($3c4,$1b,0);
-
-                modinx($3c4,$1e,$1c,$18);
-              end;
-     __video7:begin
-                rp.bl:=md;
-                vio($6f05);
-              end;
-       __mxic:begin
-                setmode:=safemode(md);
-                wrinx($3c4,$a7,$87);    {enable extensions}
-              end;
-       __vesa:begin
-                rp.bx:=md;
-                vio($4f02);
-                if rp.ax<>$4f then setmode:=false
-                else begin
-                  vesamodeinfo(md);
-                  chip:=__vesa;
+__ati1,__ati2:setmode:=setATImode(md);
+     __atiGUP:if md<$100 then setmode:=setATImode(md)
+              else begin
+                case memmode of
+                 _p15:x:=$6;
+                 _p16:x:=$E;
+                 _p24:x:=$7;
                 end;
+                  {mov al,[md]  mov ah,[x]  mov bx,1  call C000h:64h
+                    mov al,1  call C000h:68h}
+                inline($8A/$46/<md/$8A/$66/<x/$BB/>1/$9A/>$64/>$C000
+                      /$B8/>1/$9A/>$68/>$C000);
               end;
-     __acumos:begin
-                vio(md);
-                wrinx($3c4,6,$12);
+     __compaq:begin
+                setmode:=safemode(md);
+                if memmode=_p16 then outp($3C8+DAC_RS3,$38);
               end;
-     __tseng3:begin
-                vio(md);
-                modinx($3c4,4,2,2);
-              end;
-     __tseng4:case hi(md) of
+     __ET4w32,
+     __ET4000:case hi(md) of
                 0:setmode:=safemode(md);
                 1:if tsvio($10e0,lo(md)) then
                   begin
@@ -544,42 +332,208 @@ __ati1,__ati2:begin
                   end else setmode:=false;
                 2:if tsvio($10f0,md shl 8+$ff) then
                   begin
-                    outp($3bf,3);
-                    outp(crtc+4,$a0);   {enable Tseng 4000 Extensions}
-                    wrinx(crtc,$13,0);
-                    modinx(crtc,$3f,$80,$80);
-               {     outp(crtc+4,$29);
-                    outp($3bf,1);      do we need these ? }
-                    wrinx(crtc,$13,0);
-                    modinx(crtc,$3f,$80,$80);
+                    if bytes=2048 then
+                    begin         {Bug correction for the MEGAVGA BIOS}
+                      outp($3bf,3);
+                      outp(crtc+4,$a0);   {enable Tseng 4000 Extensions}
+                      wrinx(crtc,$13,0);
+                      setinx(crtc,$3f,$80);
+                    end
                   end else setmode:=false;
-                3:if not tsvio($10f0,lo(md)) then setmode:=false;
-                4:if tsvio($10f0,lo(md)) then
-                  begin
-                    dactocomm;
-                    x:=inp($3c6);
-                    outp($3c6,x or 64);  {set DAC to 64K colors}
-                    dactopel;
-                  end else setmode:=false;
+                3:if tsvio($10f0,lo(md)) and setdac15 then
+                  else setmode:=false;
+                4:if tsvio($10f0,lo(md)) and setdac16 then
+                  else setmode:=false;
               end;
+     __everex:begin
+                rp.bl:=md;
+                vio($70);
+              end;
+      __oak87:if safemode(md) then
+                case memmode of
+                  _p15:setmode:=setdac15;
+                  _p16:setmode:=setdac16;
+                  _p24:setmode:=setdac24;
+                end
+              else setmode:=false;
          __s3:if md<$100 then setmode:=safemode(md)
               else begin
                 rp.bx:=md;
                 vio($4f02);
                 if rp.ax=$4f then
                 begin
-                  if md<$200 then vesamodeinfo(md);
+                  if md<$200 then vesamodeinfo(md,NIL);
+                  if (memmode=_p16) and setdac16 then;
                 end
-                else setmode:=false;
+                else begin
+                  setmode:=false;
+                  dac2comm;
+                  outp($3C6,0);
+                  dac2pel;
+                end;
+              end;
+     __iitagx,
+     __trid89:begin
+                vio(md);
+                if (rp.ah<>0) then setmode:=false;
+                case memmode of   {9000i doesn't set HiColor modes}
+                  _p15:if not setdac15 then setmode:=false;
+                  _p16:if not setdac16 then setmode:=false;
+                end;
+
+
+              end;
+     __video7:begin
+                rp.bl:=md;
+                vio($6f05);
+              end;
+       __vesa:begin
+                rp.bx:=md;
+                vio($4f02);
+                if rp.ax<>$4f then setmode:=false
+                else begin
+                  vesamodeinfo(md,NIL);
+                  chip:=__vesa;
+                end;
+              end;
+        __UMC:begin
+                setmode:=safemode(md);
+                case memmode of
+                  _p15:setmode:=setdac15;
+                  _p16:setmode:=setdac16;
+                end;
+              end;
+        __xbe:begin
+                viop($4E03,md,0,instance,NIL);
+                if rp.ax<>$4E then setmode:=false;
+              end;
+  else setmode:=safemode(md);
+  end;
+
+  if (inp($3CC) and 1)=0 then crtc:=$3B4 else crtc:=$3D4;
+  case (rdinx(GRC,6) shr 2) and 3 of
+    0,1:vseg:=$A000;
+      2:vseg:=$B000;
+      3:vseg:=$B800;
+  end;
+
+
+  case chip of
+     __aheadA,
+     __aheadB:begin
+                setinx(GRC,$F,$20);
+                if (memmode>_cga2) and (md<>$13) then setinx(GRC,$C,$20);
+              end;
+     __al2101:begin
+                setinx(crtc,$1A,$10);    {Enable extensions}
+                setinx(crtc,$19,2);      {Enable >256K}
+                setinx(GRC,$F,4);        {Enable RWbank}
+              end;
+     __atiGUP,
+       __ati2:begin
+                setinx(IOadr,$B6,1);    {enable display >256K}
+                setinx(IOAdr,$Be,8);    {enable RWbanks}
+                setinx(IOAdr,$Bf,$1);
+              end;
+   __chips451,__chips452,__chips453:
+              begin
+                prt:=$46E8;
+                x:=inp(prt);
+                outp(prt,x or $10);
+                y:=inp($103);
+                outp($103,y or $80);
+                outp(prt,x and $EF);
+                if (y and $40)=0 then IOadr:=$3D6 else IOadr:=$3B6;
+                setinx(IOadr,4,4);
+                if chip<>__chips451 then
+                begin
+                  modinx(IOadr,$B,3,1);
+                  wrinx(IOadr,$C,0);
+                end;
+              end;
+      __cir54:begin
+                wrinx(SEQ,6,$12);
+                setinx(crtc,$1B,2);      {Enable mem >256K}
+                if mm>1024 then
+                begin
+                  setinx(GRC,11,$20);    {Set 16K banks}
+                  setinx(SEQ,$f,$80);    {Enable Ext mem}
+                end;
+                wrinx(crtc,$25,$FF);
+              end;
+      __cir64:begin
+                wrinx(GRC,$A,$EC);       {Enable extensions}
+                if memmode>_cga2 then setinx(GRC,$D,7);
+              end;
+     __compaq:begin
+                modinx(GRC,$F,$f,5);
+                setinx(GRC,$10,8);
+              end;
+     __ET3000:setinx(SEQ,4,2);
+        __HMC:if memmode>=_cga2 then
+              begin
+                if memmode=_pl4 then
+                begin
+                  setinx(SEQ,$E7,$4);
+                  clrinx(GRC,6,$C);
+                end;
+                setinx(SEQ,$E8,$9);
+
+              end;
+     __iitagx:begin
+                modinx(GRC,6,$C,4);
+                spcreg:=0;
+                if (inp(IOadr) and 4)>0 then
+                begin
+                  initxga;
+                  spcreg:=$1F0-(rdinx(IOadr+10,$75) and 3)*$10;
+                end;
+              end;
+       __mxic:begin
+                setinx(SEQ,$65,$40);
+                wrinx(SEQ,$a7,$87);    {enable extensions}
+                setinx(SEQ,$c3,4);     {Enable banks}
+                setinx(SEQ,$f0,8);     {Enable display >256k}
+              end;
+        __ncr:begin
+                wrinx(SEQ,5,5);
+                wrinx(SEQ,$18,0);
+                wrinx(SEQ,$19,0);
+                wrinx(SEQ,$1A,0);
+                wrinx(SEQ,$1B,0);
+                wrinx(SEQ,$1C,0);
+                wrinx(SEQ,$1D,0);
+                setinx(SEQ,$1e,$1C);
+              end;
+        __oak:begin
+                if memmode>=_pl4 then setinx($3DE,$D,$1C);
+              end;
+      __oak87:begin
+                if memmode=_pl4 then setinx($3DE,$D,$10);
+             (*   if md=$13 then
+                begin
+                  wrinx(crtc,$14,0);
+                  wrinx(crtc,$13,20);
+                  wrinx(crtc,$17,$c3);
+                  setinx($3DE,$21,4);
+                end; (* Creates a 320x200 mode without 64K limitations
+                        however there is no pixel doubling, creating a
+                        "double screen"  *)
+              end;
+   __paradise:begin
+                modinx(GRC,$F,$17,5); {Enable extensions}
+                wrinx(crtc,$29,$85);  {Enable extensions 2}
+                clrinx(GRC,$B,8);
+                clrinx(crtc,$2F,$62);
+                setinx(SEQ,$11,$80);  {enable dual bank}
               end;
       __p2000:begin
-                setmode:=safemode(md);
-                if memmode=_p64k then
+                if memmode=_p16 then
                 begin
-                  dactocomm;
+                  dac2comm;
                   outp($3c6,$c0);
                 end;
-         (*       if memmode=_p16m then
+         (*       if memmode=_p24 then
                 begin            {This can trick a ATT20c492 into 24bit mode}
                   dactocomm;
                   outp($3c6,$e0);
@@ -587,962 +541,1290 @@ __ati1,__ati2:begin
                   pixels:=530;
                 end;  *)
               end;
-  else setmode:=safemode(md)
+    __realtek:begin
+                setinx(crtc,$19,$A2);   {display from upper 512k}
+                setinx(GRC,$C,32);
+                setinx(GRC,$F,4);       {dual bank}
+              end;
+         __s3:if memmode>_CGA2 then
+              begin
+                wrinx(crtc,$38,$48);
+                wrinx(crtc,$39,$A5);
+                setinx(crtc,$31,8);   {Enable access >256K}
+                wrinx(crtc,$38,0);
+                wrinx(crtc,$39,$5A);
+              end;
+     __trid89:begin
+                setinx(crtc,$1e,$80);   (* Enable 17bit display start *)
+                if (memmode>_cga2) AND (Version=TR_8900C) then
+                begin
+                  wrinx(SEQ,$B,0);
+                  x:=inp(SEQ+1);    {Switch to new mode}
+                  x:=rdinx(SEQ,$E);
+                  wrinx(SEQ,$E,$80);
+                  setinx(SEQ,$C,$20);
+                  wrinx(SEQ,$E,x);
+                end;
+              end;
+        __umc:begin
+                OUTP($3BF,$AC);     {Enable extensions}
+                setinx(SEQ,8,$80);    {Enable banks bit0}
+                clrinx(crtc,$2F,$2);  {Enable >256K}
+              end;
+     __video7:begin
+                wrinx(SEQ,6,$EA);  (* Enable extensions *)
+                if Version>=V7_208A then
+                  setinx(SEQ,$E0,$80);  {Enable Dual bank}
+              end;
+     __Weitek:begin
+                x:=rdinx(SEQ,$11);
+                outp(SEQ+1,x);
+                outp(SEQ+1,x);
+                outp(SEQ+1,inp(SEQ+1) and $DF);
+              end;
+  __xbe,__xga:initxga;
   end;
   curbank:=$ffff;    {Set curbank invalid }
+  planes:=1;
+  setinx(SEQ,4,2);    {Set "more than 64K" flag}
+
   case memmode of
-  _pl2e,_pl4:planes:=2;
-    _pl16:planes:=4;
-  else planes:=1;
+  _text,_text2,_text4,
+  _pl1e,_pl2:planes:=2;
+        _pl4:planes:=4;
   end;
-  for x:=1 to mm div 64 do
-  begin
-    setbank(x-1);
-    mem[$a000:$ffff]:=0;
-    fillchar(mem[$a000:0],$ffff,0);
-  end;
-  modinx($3c4,4,2,2);    {Set "more than 64K" flag}
-  vseg:=$a000;
-end;
-
-procedure checkmem(mx:word);
-var
-  fail:boolean;
-  ma:array[0..99] of byte;
-  x:word;
-begin
-  memmode:=_p256;
-
-  fail:=true;
-  while (mx>1) and fail do
-  begin
-    setbank(mx-1);
-    move(mem[$a000:0],ma,100);
-    for x:=0 to 99 do
-      mem[$a000:x]:=ma[x] xor $aa;
-    setbank(mx-1);
-    fail:=false;
-    for x:=0 to 99 do
-      if mem[$a000:x]<>ma[x] xor $aa then fail:=true;
-    move(ma,mem[$a000:0],100);
-    if not fail then
+  if vseg=$A000 then
+    for x:=1 to mm div 64 do
     begin
-      setbank((mx shr 1)-1);
-      for x:=0 to 99 do
-        mem[$a000:x]:=ma[x] xor $55;
-      setbank(mx-1);
-      fail:=true;
-      for x:=0 to 99 do
-        if mem[$a000:x]<>ma[x] xor $55 then fail:=false;
-      move(ma,mem[$a000:0],100);
+      setbank(x-1);
+      mem[vseg:$FFFF]:=0;
+      fillchar(mem[vseg:0],$ffff,0);
     end;
-    mx:=mx shr 1;
+  AnalyseMode;
+end;
+
+const
+  set15:array[0..13] of byte=(0,0,$A0,$A0,$A0,$A0,$C1,0,$80,$F0,$A0,0,0,0);
+  msk15:array[0..13] of byte=(0,0,$80,$C0,$FF,$E0,$C7,0,$C0,$FF,$E0,0,0,0);
+
+  set16:array[0..13] of byte=(0,0,  0,$E0,$A6,$C0,$C5,0,$C0,$E1,$C0,0,0,0);
+  msk16:array[0..13] of byte=(0,0,  0,$C0,$FF,$E0,$C7,0,$C0,$FF,$E0,0,0,0);
+
+  set24:array[0..13] of byte=(0,0,  0,  0,$9E,$E0,$80,0,$60,$E5,$E0,0,0,0);
+  msk24:array[0..13] of byte=(0,0,  0,  0,$FF,$E0,$C7,0,$E0,$FF,$E0,0,0,0);
+
+
+function prepDAC:word;     {Sets DAC up to receive command word}
+var x:word;
+begin
+  dac2comm;
+  if dactype=_dacss24 then
+  begin
+    dac2comm;
+    x:=8;
+    while (x>0) and (daccomm<>$8E) do
+    begin
+      daccomm:=inp($3C6);
+      dec(x);
+    end;
+    prepDAC:=daccomm;
+  end
+  else begin
+    prepDAC:=inp($3C6);
+    dac2comm;
   end;
-  mm:=mx*128;
+end;
+
+procedure dacmode(andmsk,ormsk:word);
+begin
+  ormsk:=ormsk and (not andmsk);
+  if DAC_RS2<>0 then
+  begin
+    outp($3C6+DAC_RS2,(inp($3C6+DAC_RS2) and andmsk) or ormsk);
+  end
+  else begin
+    outp($3C6,(prepDAC and andmsk) or ormsk);
+    dac2pel;
+
+  end;
+end;
+
+procedure setdac6;
+var m:word;
+begin
+  case dactype of
+   _dacSC24:begin
+              dac2comm;
+              outp($3C6,$10);
+              outp($3C7,8);
+              outp($3C8,0);
+              outp($3C9,0);
+              outp($3C6,0);
+              dac2pel;
+            end;
+    _dacATT,_dacBt484:
+            dacmode(0,0);
+    _dacCEG,
+      _dac8:;
+  end;
+end;
+
+procedure setdac8;
+begin
+  case dactype of
+   _dacSC24:begin
+              dac2comm;
+              outp($3C6,$10);
+              outp($3C7,8);
+              outp($3C8,1);
+              outp($3C9,0);
+              outp($3C6,0);
+              dac2pel;
+            end;
+    _dacATT,_dacBt484:
+            dacmode($FD,2);
+    _dacCEG,
+      _dac8:;
+  end;
+end;
+
+function setdac15:boolean;
+var m:word;
+begin
+  if msk15[dactype]=0 then setdac15:=false
+  else begin
+    m:=msk15[dactype];
+    if (chip<>__ET4000) and (chip<>__ET4W32) and
+      (dactype<=_dac16) then m:=m or $20;
+    dacmode(not m,set15[dactype]);
+    setdac15:=true;
+  end;
+end;
+
+function setdac16:boolean;
+var m:word;
+begin
+  if msk16[dactype]=0 then setdac16:=false
+  else begin
+    m:=msk15[dactype];
+    if (chip<>__ET4000) and (chip<>__ET4W32) and
+      (dactype<=_dac16) then m:=m or $20;
+    dacmode(not m,set16[dactype]);
+    setdac16:=true;
+  end;
+end;
+
+function setdac24:boolean;
+begin
+  if msk24[dactype]=0 then setdac24:=false
+  else begin
+    dacmode(not msk24[dactype],set24[dactype]);
+    setdac24:=true;
+  end;
 end;
 
 
-procedure setvstart(l:longint);       {Set the display start address}
-var x,y:word;
+
+procedure setvstart(x,y:word);       {Set the display start address}
+var
+  l:longint;
+  stdvga:boolean;
 begin
-  if chip<>__vesa then
+  stdvga:=true;
+
+  case chip of
+    __vesa:begin
+               rp.bx:=0;
+               rp.cx:=x;
+               rp.dx:=y;
+               vio($4f07);
+               if rp.ax=0 then;
+               stdvga:=false;
+             end;
+  else
+    case memmode of
+        _text,_text2,_text4:
+                  l:=(bytes*y+x*2)*2;
+            _cga2:l:=(bytes*y+(x shr 2))*4;
+  _cga1,_pl1,_pl2,_pl4:
+                  l:=(bytes*y+(x shr 3))*4;
+             _pk4:l:=bytes*y+x shr 1;
+              _p8:l:=bytes*y+x;
+        _p15,_p16:l:=bytes*y+x*2;
+             _p24:l:=bytes*y+x*3;
+             _p32:l:=bytes*y+x*4;
+    end;
+
+    y:=(l shr 18) and (pred(mm) shr 8);
+    case chip of
+      __aheadb:begin
+                 if (memmode=_p8) and ((rdinx(GRC,$C) and $20)>0) then
+                 begin
+                   y:=y shr 1;
+                   l:=l shr 1;
+                 end;
+                 modinx(GRC,$1c,3,y);
+               end;
+        __ati1:modinx(IOAdr,$b0,$40,y shl 6);
+      __atiGUP,
+        __ati2:begin
+                 if (rdinx(IOadr,$B0) and $20)>0 then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx(IOadr,$b0,$40,y shl 6);
+                 modinx(IOadr,$A3,$10,y shl 3);
+                 modinx(IOadr,$AD,4,y);
+               end;
+      __al2101:begin
+                 if (rdinx(GRC,$C) and $10)<>0 then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx(crtc,$20,7,y);
+               end;
+    __chips452,__chips453:
+               wrinx(IOadr,$C,y);
+       __cir54:begin
+                 inc(y,y and 6);     {move bit 1-2 to 2-3}
+                 modinx(crtc,$1b,$d,y);
+               end;
+       __cir64:wrinx(GRC,$7C,y);
+      __compaq:modinx(GRC,$42,$C,y shl 2);
+      __ET3000:begin
+                 if (memmode=_p8) or ((rdinx(SEQ,7) and $40)>0) then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx(crtc,$23,2,y shl 1);
+               end;
+      __ET4000:modinx(crtc,$33,3,y);
+      __ET4W32:modinx(crtc,$33,$F,y);
+         __HMC:begin
+                 if (rdinx(SEQ,$E7) and 1)>0 then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx(SEQ,$ED,1,y);
+               end;
+      __iitagx:if (inp(IOadr) and 4)=0 then modinx(crtc,$1e,$20,y shl 5)
+               else begin
+                 stdvga:=false;
+                 wrinx3(IOadr+10,$40,l shr 2);
+               end;
+        __mxic:modinx(SEQ,$F1,3,y);
+         __ncr:modinx(crtc,$31,$f,y);
+         __oak:begin
+                 if (memmode>_pl4) and (curmode<>$13) then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx($3DE,$14,8,y shl 3);  {lower bit}
+                 modinx($3DE,$16,8,y shl 2);  {upper bit}
+               end;
+       __oak87:begin
+                 if (memmode>_pl4) and ((rdinx($3DE,$21) and 4)>0) then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx($3DE,$17,7,y);
+               end;
+       __p2000:modinx(GRC,$21,$7,y);
+    __paradise:modinx(GRC,$d,$18,y shl 3);
+     __realtek:begin
+                 if (rdinx(GRC,$C) and $10)<>0 then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 if y>1 then inc(y,y and 2);   {shift high bit one up.}
+                 modinx(crtc,$19,$50,y shl 4);
+               end;
+          __s3:begin
+                 wrinx(crtc,$38,$48);
+                 wrinx(crtc,$39,$A5);
+                 modinx(crtc,$31,$30,y shl 4);
+                 modinx(crtc,$51,1,y shr 2);
+                 wrinx(crtc,$39,$5A);
+                 wrinx(crtc,$38,0);
+               end;
+      __tridcs:modinx(crtc,$1e,$20,y shl 5);
+      __trid89:begin
+        (*         wrinx(SEQ,$B,0);
+                 if (rdinx(SEQ,$D) and $10)>0 then l:=l shr 1;
+                 y:=rdinx(SEQ,$B);
+                 y:=l shr 18;
+                 modinx(crtc,$1E,$20,(y and 1) shl 5);
+                 wrinx(SEQ,$B,0);          {select old mode regs}
+                 modinx(SEQ,$E,1,y shr 1);
+                 if rdinx(SEQ,$B)=0 then;  {Select new mode regs}  *)
+
+                 wrinx(SEQ,$B,0);          {select old mode regs}
+                 if (rdinx(SEQ,$D) and $10)>0 then
+                 begin
+                   l:=l shr 1;
+                   y:=y shr 1;
+                 end;
+                 modinx(SEQ,$E,1,y shr 1);
+                 if rdinx(SEQ,$B)=0 then;  {Select new mode regs}
+                 modinx(crtc,$1E,$20,y shl 5);
+                 if Version=TR_8900CL then modinx(crtc,$27,3,y shr 1);
+               end;
+         __UMC:begin
+                if (rgs.crtcregs.x[$33] and $10)>0 then
+                begin
+                  l:=l shr 1;
+                  y:=y shr 1;
+                end;
+                modinx(crtc,$33,1,y);
+               end;
+      __video7:modinx(SEQ,$f6,$70,(y shl 4) and $30);
+      __Weitek:modinx(GRC,$D,$18,y shl 3);
+   __xbe,__xga:begin
+                 stdvga:=false;
+                 wrinx3(IOadr+10,$40,l shr 2);
+               end;
+    end;
+  end;
+  if stdvga then
   begin
     x:=l shr 2;
-    y:=(l shr 18) and (pred(mm) shr 8);   {Mask out any "too" high bits}
     wrinx(crtc,13,lo(x));
     wrinx(crtc,12,hi(x));
   end;
-  case chip of
-    __tseng3:modinx(crtc,$23,2,y shl 1);
-    __tseng4:modinx(crtc,$33,3,y);
-    __tridcs:modinx(crtc,$1e,32,y shl 5);
-    __trid89:begin
-               modinx(crtc,$1e,$a0,y shl 5+128);
-               wrinx($3c4,11,0);
-               modinx($3c4,$e,1,y shr 1);
-             end;
-    __video7:modinx($3c4,$f6,$70,(y shl 4) and $30);
-  __paradise:modinx($3ce,$d,$18,y shl 3);
-  __chips452,__chips453:
-             begin
-               wrinx($3d6,12,y);
-               modinx($3d6,4,4,4);
-             end;
-     __ncr:begin
-             modinx(crtc,$31,$f,y);
-           end;
-    __ati1:modinx(atireg,$b0,$40,y shl 6);
-    __ati2:modinx(atireg,$b0,$c0,y shl 6);
-  __aheadb:modinx($3ce,$1c,3,y);
-    __vesa:begin
-             rp.bx:=0;
-             rp.cx:=l mod 320;
-             rp.dx:=l div 320;
-             vio($4f07);
-             if rp.ax=0 then;
-           end;
-      __s3:begin
-             wrinx(crtc,$38,$48);
-             modinx(crtc,$31,$30,y shl 4);
-             wrinx(crtc,$38,0);
-           end;
-__cirrus54:begin
-             if y>1 then inc(y,2);
-             modinx(crtc,$1b,5,y);
-           end;
-   __p2000:modinx($3ce,$21,$7,y);
-  end;
 end;
 
 
-procedure UNK(chp:string;id:word);
+
+procedure WD_wait;
 begin
-  name:='Unknown '+chp+' chip ('+istr(id)+')';
-end;
-
-   (*  Tests for various adapters  *)
-
-
-function _chipstech:boolean;
-begin
-  _chipstech:=false;
-  if dotest[__CHIPS451] then
+  if version=WD_90c33 then
   begin
-    vio($5f00);
-    if rp.al=$5f then
-    begin
-      _chipstech:=true;
-      case rp.bl shr 4 of
-        0:name:='Chips & Tech 82c451';
-        1:name:='Chips & Tech 82c452';
-        2:name:='Chips & Tech 82c455';
-        3:name:='Chips & Tech 82c453';
-        5:name:='Chips & Tech 82c456';
-        6:name:='Chips & Tech 82c457';
-        7:name:='Chips & Tech F65520';
-        8:name:='Chips & Tech F65530';
-      else UNK('Chips & Tech',rp.bl shr 4);
-      end;
-      case rp.bl shr 4 of
-        1:CHIP:=__chips452;
-        3:CHIP:=__chips453;
-      else chip:=__chips451;
-      end;
-      case rp.bh of
-        1:mm:=512;
-        2:mm:=1024;
-      end;
-    end;
-  end;
-end;
-
-function _paradise:boolean;
-var old,old1,old2:word;
-begin
-  _paradise:=false;
-  if dotest[__PARADISE] then
-  begin
-    old:=rdinx($3ce,15);
-    modinx($3ce,15,$17,0);   {Lock registers}
-
-    if not testinx2($3ce,9,$7f) then
-    begin
-      wrinx($3ce,15,5);      {Unlock them again}
-      if testinx2($3ce,9,$7f) then
-      begin
-        _paradise:=true;
-        old2:=rdinx(crtc,$29);
-        name:='Paradise ';
-        modinx(crtc,$29,$8f,$85);   {Unlock WD90Cxx registers}
-        if not testinx(crtc,$2b) then name:=name+'PVGA1A'
-        else begin
-          old1:=rdinx($3c4,6);
-          wrinx($3c4,6,$48);
-          if not testinx2($3c4,7,$f0) then name:=name+'WD90C00'
-          else if not testinx($3c4,16) then
-          begin
-            name:=name+'WD90C2x';
-            wrinx(crtc,$34,$a6);
-            if (rdinx(crtc,$32) and 32)<>0 then wrinx(crtc,$34,0);
-          end
-          else if testinx2($3c4,20,15) then
-               begin
-                 if rdinx(crtc,$37)=$31 then name:=name+'WD90C31'
-                                        else name:=name+'WD90C30';
-               end
-               else if not testinx2($3c4,16,4) then name:=name+'WD90C10'
-                                               else name:=name+'WD90C11';
-
-          wrinx($3c4,6,old1);
-        end;
-        case rdinx($3ce,11) shr 6 of
-           2:mm:=512;
-           3:mm:=1024;
-        end;
-        wrinx(crtc,$29,old2);
-        chip:=__paradise;
-      end;
-    end;
-    wrinx($3ce,15,old);
-  end;
-end;
-
-function _video7:boolean;
-begin
-  _video7:=false;
-  if dotest[__video7] then
-  begin
-    vio($6f00);
-    if rp.bx=$5637 then
-    begin
-      _video7:=true;
-      vio($6f07);
-      case rp.bl of
-        $80..$ff:name:='Video7 VEGA VGA';
-        $70..$7f:name:='Video7 FASTWRITE/VRAM';
-        $50..$5f:name:='Video7 Version 5';
-        $41..$4f:name:='Video7 1024i';
-      end;
-      case rp.ah and 127 of
-        2:mm:=512;
-        4:mm:=1024;
-      end;
-      chip:=__video7;
-    end
-  end;
-end;
-
-function _genoa:boolean;
-var ad:word;
-begin
-  _genoa:=false;
-  if dotest[__genoa] then
-  begin
-    ad:=memw[biosseg:$37];
-    if (memw[biosseg:ad+2]=$6699) and (mem[biosseg:ad]=$77) then
-    begin
-      _genoa:=true;
-      case mem[biosseg:ad+1] of
-        0:name:='Genoa 62/300';
-      $11:begin
-            name:='Genoa 64/500';
-            mm:=512;
-          end;
-      $22:name:='Genoa 6100';
-      $33:name:='Genoa 51/5200 (Tseng 3000)';
-      $55:begin
-            name:='Genoa 53/5400 (Tseng 3000)';
-            mm:=512;
-          end;
-      end;
-      if mem[biosseg:ad+1]<$33 then chip:=__genoa else chip:=__tseng3;
-    end
-  end;
-end;
-
-function _tseng:boolean;
-var x,vs:word;
-begin
-  _tseng:=false;
-  if dotest[__TSENG3] or dotest[__TSENG4] then
-  begin
-    outp($3bf,3);
-    outp($3d8,$a0);    {Enable Tseng 4000 extensions}
-    if tstrg($3cd,$3f) then
-    begin
-      _tseng:=true;
-      if testinx2(crtc,$33,$f) then
-      begin
-        name:='Tseng ET4000';
-        case rdinx(crtc,$37) and 11 of
-         3,9:mm:=256;
-          10:mm:=512;
-          11:mm:=1024;
-        end;
-    (*    vio($10f1);
-        if (rp.ax=$10) then
-          case rp.bl of
-            1:name:=name+' /w Sierra RAMDAC';
-            2:name:=name+' /w SS24 RAMDAC';
-          end; *)
-        chip:=__tseng4;
-      end
-      else begin
-        name:='Tseng ET3000';
-        chip:=__tseng3;
-        if setmode($13) then;
-        x:=port[$3da];
-        x:=rdinx($3c0,$36);
-        port[$3c0]:=x or 16;
-        case (rdinx($3ce,6) shr 2) and 3 of
-         0,1:vs:=$a000;
-           2:vs:=$b000;
-           3:vs:=$b800;
-        end;
-
-        meml[vs:1]:=$12345678;
-        if memw[vs:2]=$3456 then mm:=512;
-
-        wrinx($3c0,$36,x);     {reset value and reenable DAC}
-      end;
-    end;
-  end;
-end;
-
-function _trident:boolean;
-var chp,old,val:word;
-begin
-  _trident:=false;
-  if dotest[__tridBR] or dotest[__trid89] or dotest[__tridCS] then
-  begin
-    wrinx($3c4,11,0);
-    chp:=inp($3c5);
-    old:=rdinx($3c4,14);
-    outp($3c5,0);
-    val:=inp($3c5);
-    outp($3c5,old);
-    if (val and 15)=2 then
-    begin
-      _trident:=true;
-      case chp of
-        1:name:='Trident 8800BR';
-        2:name:='Trident 8800CS';
-        3:name:='Trident 8900';
-        4:name:='Trident 8900C';
-      $13:name:='Trident 8900C';
-      $23:name:='Trident 9000';
-      $83:name:='Trident LX9200';
-      $93:name:='Trident LCD9100';
-      else UNK('Trident',chp);
-      end;
-      case chp and 15 of
-        1:chip:=__tridbr;
-        2:chip:=__tridCS;
-        3:chip:=__trid89;
-      end;
-      if (pos('Zymos Poach 51',getbios(0,255))>0) or
-         (pos('Zymos Poach 51',getbios(230,255))>0) then
-      begin
-        name:=name+' (Zymos Poach)';
-        chip:=__poach;
-      end;
-      if (chp>=3) then
-      begin
-        case rdinx(crtc,$1f) and 3 of
-          0:mm:=256;
-          1:mm:=512;
-          2:mm:=768;
-          3:mm:=1024;
-        end;
-      end
-      else
-      if (rdinx(crtc,$1f) and 2)>0 then mm:=512;
-
-    end;
-  end;
-end;
-
-function _oak:boolean;
-begin
-  _oak:=false;
-  if dotest[__oak] then
-  begin
-    if testinx2($3de,$d,$38) then
-    begin
-      _oak:=true;
-      name:='OAK 037C';
-      if testinx($3DE,$11) then
-      begin
-        if rdinx($3DE,$B)=5 then name:='OAK 077'
-                            else name:='OAK 067';
-      end;
-      case rdinx($3de,13) shr 6 of
-        2:mm:=512;
-      1,3:mm:=1024;    {1 might not give 1M??}
-      end;
-      chip:=__oak;
-    end;
-  end;
-end;
-
-function _cirrus:boolean;
-var old,eagle:word;
-begin
-  _cirrus:=false;
-  if dotest[__cirrus] then
-  begin
-    old:=rdinx(crtc,12);
-    outp(crtc+1,0);
-    eagle:=rdinx(crtc,$1f);
-    wrinx($3c4,6,lo(eagle shr 4) or lo(eagle shl 4));
-    if inp($3c5)=0 then
-    begin
-      outp($3c5,eagle);
-      if inp($3c5)=1 then
-      begin
-        _cirrus:=true;
-        case eagle of
-          $EC:name:='Cirrus 510/520';
-          $CA:name:='Cirrus 610/620';
-          $EA:name:='Cirrus Video 7 OEM'
-        else UNK('Cirrus',eagle);
-        end;
-        chip:=__cirrus;
-      end;
-    end;
-    wrinx(crtc,12,old);
-  end;
-end;
-
-
-function _cirrus54:boolean;
-var x,old:word;
-begin
-  _cirrus54:=false;
-  if dotest[__cirrus54] then
-  begin
-    old:=rdinx($3C4,6);
-    wrinx($3c4,6,$12);
-    if (rdinx($3C4,6)=$12) and testinx2($3C4,$1E,$3F) and testinx2(crtc,$1B,$ff) then
-    begin
-      x:=rdinx(crtc,$27);
-      case x of
-          $8A:name:='Cirrus 54xx typ 2';
-     $8C..$8F:name:='Cirrus 54xx typ 3';
-     $90..$93:name:='Cirrus 54xx typ 5';
-     $94..$97:name:='Cirrus 54xx typ 4';
-      else UNK('Cirrus54',x);
-      end;
-      case rdinx($3C4,$F) and $18 of
-        0:mm:=0;
-        8:mm:=512;
-       16:mm:=1024;
-      end;
-      _cirrus54:=true;
-      chip:=__cirrus54;
-    end
-    else wrinx($3C4,6,old);
-  end;
-end;
-
-function _ahead:boolean;
-var old:word;
-begin
-  _ahead:=false;
-  if dotest[__aheadA] or dotest[__aheadB] then
-  begin
-    old:=rdinx($3ce,15);
-    wrinx($3ce,15,0);
-    if not testinx2($3ce,12,$FB) then
-    begin
-      wrinx($3ce,15,$20);
-      if testinx2($3ce,12,$FB) then
-      begin
-        _ahead:=true;
-        case rdinx($3ce,15) and 15 of
-          0:begin
-              name:='Ahead A';
-              chip:=__aheadA;
-            end;
-          1:begin
-              name:='Ahead B';
-              chip:=__aheadB;
-            end;
-        end;
-      end;
-    end;
-    wrinx($3ce,15,old);
-  end;
-end;
-
-function _everex:boolean;
-var x:word;
-begin
-  _everex:=false;
-  if dotest[__everex] then
-  begin
-    rp.bx:=0;
-    vio($7000);
-    if rp.al=$70 then
-    begin
-      x:=rp.dx shr 4;
-      if  (x<>$678) and (x<>$236)
-      and (x<>$620) and (x<>$673) then     {Some Everex boards use Trident chips.}
-      begin
-        _everex:=true;
-        case rp.ch shr 6 of
-          0:mm:=256;
-          1:mm:=512;
-          2:mm:=1024;
-          3:mm:=2048;
-        end;
-        name:='Everex Ev'+hx[x shr 8]+hx[(x shr 4) and 15]+hx[x and 15];
-        chip:=__everex;
-      end;
-    end;
-  end;
-end;
-
-function _ati:boolean;
-var w:word;
-begin
-  _ati:=false;
-  if dotest[__ATI1] or dotest[__ati2] then
-  begin
-    if getbios($31,9)='761295520' then
-    begin
-      _ati:=true;
-      case memw[biosseg:$40] of
-       $3133:begin
-               atireg:=memw[biosseg:$10];
-               name:='ATI VGA Wonder';
-               w:=rdinx(atireg,$bb);
-               case w and 15 of
-                 0:_crt:='EGA';
-                 1:_crt:='Analog Monochrome';
-                 2:_crt:='Monochrome';
-                 3:_crt:='Analog Color';
-                 4:_crt:='CGA';
-                 6:_crt:='';
-                 7:_crt:='IBM 8514/A';
-               else _crt:='Multisync';
-               end;
-               chip:=__ati2;
-               case chr(mem[biosseg:$43]) of
-                '1':begin
-                      name:=name+' (18800)';
-                      chip:=__ati1;
-                    end;
-                '2':name:=name+' (18800-1)';
-                '3':name:=name+' (28800-2)';
-                '4':name:=name+' (28800-4)';
-                '5':begin
-                      name:=name+' (28800-5)';
-                      if (mem[biosseg:$44] and 128)<>0 then
-                        name:=name+' /w HICOLOR DAC';
-                    end;
-               end;
-               case chr(mem[biosseg:$43]) of
-                 '1','2':if (rdinx(atireg,$bb) and 32)<>0 then mm:=512;
-                     '3':if (rdinx(atireg,$b0) and 16)<>0 then mm:=512;
-                 '4','5':case rdinx(atireg,$b0) and $18 of
-                             0:mm:=256;
-                           $10:mm:=512;
-                         8,$18:mm:=1024;
-                         end;
-               end;
-             end;
-       $3233:begin
-               name:='ATI EGA Wonder';
-               video:='EGA';
-               chip:=__ega;
-             end;
-      end;
-    end;
-  end;
-end;
-
-function _s3:boolean;
-var x:word;
-begin
-  _s3:=false;
-  if dotest[__s3] then
-  begin
-    wrinx(crtc,$38,0);
-    if not testinx2(crtc,$35,$f) then
-    begin
-      wrinx(crtc,$38,$48);
-      if testinx2(crtc,$35,$f) then
-      begin
-        _s3:=true;
-        chip:=__s3;
-        x:=rdinx(crtc,$30);
-        case x of
-          $81:name:='S3 86c911';
-          $82:name:='S3 86c911A';  {Whats the diff?}
-        else UNK('S3',x);
-        end;
-        if (rdinx(crtc,$41) and $10)<>0 then mm:=1024
-                                        else mm:=512;
-      end;
-    end;
-  end;
-end;
-
-function _al2101:boolean;
-begin
-  _al2101:=false;
-  if dotest[__al2101] then
-  begin
-    if tstrg($8286,$ff) and testinx2(crtc,$1f,$3b)
-       and testinx2($3ce,13,15) then
-    begin
-      _al2101:=true;
-      name:='Avance Logic 2101';
-      chip:=__al2101;
-      case rdinx(crtc,$1e) and 3 of
-        0:mm:=256;
-        1:mm:=512;
-        2:mm:=1024;
-        3:mm:=2048;
-      end;
-    end;
-  end;
-end;
-
-function _vesa:boolean;
-begin
-  _vesa:=false;
-  if dotest[__vesa] then
-  begin
-    vio($4f03);
-    if rp.al=$4f then
-    begin
-      _vesa:=true;
-      name:='VESA';
-      chip:=__vesa;
-      vesa:=1;
-    end;
-  end;
-end;
-
-function _yamaha:boolean;
-begin
-  _yamaha:=false;
-  if dotest[__yamaha] then
-  begin
-    if testinx2($3d4,$7c,$7c) then
-    begin
-      _yamaha:=true;
-      name:='Yamaha 6388'
-    end;
-  end;
-end;
-
-function _ncr:boolean;
-var x:word;
-begin
-  _ncr:=false;
-  if dotest[__ncr] then
-  begin
-    if testinx2($3c4,5,5) then
-    begin
-      wrinx($3c4,5,0);        {Disable extended registers}
-      if not testinx2($3c4,16,$ff) then
-      begin
-        wrinx($3c4,5,1);        {Enable extended registers}
-        if testinx2($3c4,16,$ff) then
-        begin
-          _ncr:=true;
-          chip:=__ncr;
-          x:=rdinx($3c4,8) shr 4;
-          case x of
-            0:name:='NCR 77C22';
-            1:name:='NCR 77C21';
-            2:name:='NCR 77C22E';
-        8..15:name:='NCR 77C22E+';
-          else UNK('NCR',x);
-          end;
-          name:=name+' Rev. '+istr(rdinx($3c4,8) and 15);
-          if setmode($13) then;
-          checkmem(64);
-        end;
-      end;
-    end;
-  end;
-end;
-
-function _acumos:boolean;
-var old:word;
-begin
-  _acumos:=false;
-  if dotest[__acumos] then
-  begin
-    old:=rdinx($3c4,6);
-  {  wrinx($3c4,6,0);
-    if not testinx2($3ce,9,$f0) then }
-    begin
-      wrinx($3c4,6,$12);
-      if testinx2($3ce,9,$30) then
-      begin
-        _acumos:=true;
-        name:='Acumos AVGA2';
-        chip:=__acumos;
-        case rdinx($3c4,$a) and 3 of
-          0:mm:=256;
-          1:mm:=512;
-          2:mm:=1024;
-        end;
-      end;
-    end;
-    wrinx($3c4,6,old);
-  end;
-end;
-
-function _mxic:boolean;
-begin
-  _mxic:=false;
-  if dotest[__mxic] then
-  begin
-    old:=rdinx($3c4,$a7);
-    wrinx($3c4,$a7,0);       {disable extensions}
-    if not testinx($3c4,$c5) then
-    begin
-      wrinx($3c4,$a7,$87);   {enable extensions}
-      if testinx($3c4,$c5) then
-      begin
-        _mxic:=true;
-        chip:=__mxic;
-        name:='MX 86010';
-        case (rdinx($3c4,$c2)  shr 2) and 3 of
-          0:mm:=256;
-          1:mm:=512;
-          2:mm:=1024;
-        end;
-      end;
-    end;
-    wrinx($3c4,$a7,old);
-  end;
-end;
-
-function _p2000:boolean;
-begin
-  _p2000:=false;
-  if dotest[__p2000] then
-  begin
-    if testinx2($3CE,$3d,$3f) and tstrg($3d6,$1f) and tstrg($3d7,$1f) then
-    begin
-      _p2000:=true;
-      name:='Primus P2000';
-      chip:=__p2000;
-      if setmode($13) then;
-      checkmem(32);
-    end;
-  end;
-end;
-
-function _realtek:boolean;
-var x:word;
-begin
-  _realtek:=false;
-  if dotest[__realtek] then
-  begin
-    if testinx2(crtc,$1f,$3f) and tstrg($3d6,$f) and tstrg($3d7,$f) then
-    begin
-      chip:=__realtek;
-      name:='Realtek';
-      _realtek:=true;
-      x:=rdinx(crtc,$1a) shr 6;
-      case x of
-     0..2:name:='Realtek version '+istr(x);
-      else UNK('Realtek',x);
-      end;
-      case rdinx(crtc,$1e) and 15 of
-        0:mm:=256;
-        1:mm:=512;
-        2:if x=0 then mm:=768  else mm:=1024;
-        3:if x=0 then mm:=1024 else mm:=2048;
-      end;
-    end;
-  end;
-end;
-
-
-
-function testdac:string;      {Test for type of DAC}
-var
-  x,y,z,v,oldcommreg,oldpelreg:word;
-
-begin
-  IF chip=__al2101 then    (* Special case -- weird DAC *)
-  begin
-    dactype:=_dac16;
-    testdac:='AVL DAC 16';
-    exit;
-  end;
-  testdac:='Normal';
-  dactype:=_dac8;
-  dactopel;
-  x:=inp($3c6);
-  repeat
-    y:=x;         {wait for the same value twice}
-    x:=inp($3c6);
-  until (x=y);
-  z:=x;
-  dactocomm;
-  if daccomm<>$8e then
-  begin                      {If command register=$8e, we've got an SS24}
-    y:=8;
+    repeat until (inp($23CE) and 15)=0;
+  end
+  else
     repeat
-      x:=inp($3c6);
-      dec(y);
-    until (x=$8e) or (y=0);
-  end
-  else x:=daccomm;
-  if x=$8e then
-  begin
-    dactype:=_dacss24;
-    testdac:='SS24';
-    dactopel;
-  end
-  else begin
-
-    dactocomm;
-    oldcommreg:=inp($3c6);
-    dactopel;
-    oldpelreg:=inp($3c6);
-    x:=oldcommreg xor 255;
-    outp($3c6,x);
-    dactocomm;
-    v:=inp($3c6);
-    if v<>x then
-    begin
-      dactocomm;
-      x:=oldcommreg xor $60;
-      outp($3c6,x);
-      dactocomm;
-      v:=inp($3c6);
-      testdac:='Sierra SC11486';
-      dactype:=_dac15;
-
-      if (x and $e0)=(v and $e0) then
-      begin
-        x:=inp($3c6);
-        dactopel;
-        testdac:='Sierra 32k/64k';
-        dactype:=_dac15;             (* Can't tell the difference *)
-
-        if x=inp($3c6) then
-        begin
-          testdac:='ATT 20c491/2';
-          dactype:=_dacatt;
-          dactocomm;
-          outp($3c6,255);
-          dactocomm;
-          x:=inp($3c6);
-          if x<>255 then
-          begin
-            testdac:='Acumos ADAC';
-            dactype:=_dacadac1;
-          end;
-        end;
-      end;
-
-      dactocomm;
-      outp($3c6,oldcommreg);
-    end;
-    dactopel;
-    outp($3c6,oldpelreg);
-  end;
+      outpw($23C0,$1001);
+    until (inpw($23C2) and $800)=0;
 end;
 
-
-procedure findbios;     {Finds the most likely BIOS segment}
-var
-  score:array[0..7] of byte;
-  x,y:word;
+procedure WD_outl(index:word;l:longint);
 begin
-  biosseg:=$c000;
-  for x:=0 to 6 do score[x]:=1;
+  outpw($23C2,index+(l and $FFF));
+  outpw($23C2,index+$1000+(l shr 12));
+end;
+
+procedure setHWcurmap(VAR map:CursorType);
+var x,y,z,w,lbank,x0,y0:word;
+  l:longint;
+  bm:array[0..127] of byte;
+  mp:record
+       case integer of
+        0:(b:array[0..2047] of byte);
+        1:(w:array[0..1023] of word);
+        2:(l:array[0..511] of longint);
+     end;
+
+procedure copyCurMap(bytes:word);
+var x,y:word;
+begin
+  setbank(lbank);
+  if memmode=_pl4 then
+  begin
+    wrinx(GRC,3,0);
+    clrinx(GRC,5,$3);
+    wrinx(GRC,8,$FF);
+    y:=-(bytes div 4);
+    for x:=0 to bytes-1 do
+    begin
+      wrinx(SEQ,2,1 shl (x and 3));
+      y0:=mem[$a000:y];
+      mem[$a000:y]:=mp.b[x];
+      if (x and 3)=3 then inc(y);
+    end;
+  end
+  else move(mp,mem[$A000:-bytes],bytes);
+end;
+
+function al_packmap(map:byte):word;
+var i,j:word;
+begin
+  j:=0;
+  for i:=0 to 7 do
+  begin
+    j:=j shl 2+2;
+    if ((map shr i) and 1)>0 then dec(j);
+  end;
+  al_packmap:=j;
+end;
+
+function al_packmap2(map:byte):longint;
+var i:word;
+    j:longint;
+begin
+  j:=0;
+  for i:=0 to 7 do
+  begin
+    j:=j shl 4+$A;
+    if ((map shr i) and 1)>0 then dec(j,5);
+  end;
+  al_packmap2:=j;
+end;
+
+function pack8to16(w:word):word;
+var x,i:word;
+begin
+  i:=0;
   for x:=0 to 7 do
   begin
-    rp.bh:=x;
-    vio($1130);
-    if (rp.es>=$c000) and ((rp.es and $7ff)=0) then
-      inc(score[(rp.es-$c000) shr 11]);
+    i:=i shl 2;
+    if ((w shl x) and 128)>0 then inc(i,3);
   end;
-
-  for x:=0 to 6 do
-  begin
-    y:=$c000+(x shl 11);
-    if (memw[y:0]<>$aa55) or (mem[y:2]<48) then
-      score[x]:=0;                       {fail if no rom}
-  end;
-  for x:=6 downto 0 do
-    if score[x]>0 then
-      biosseg:=$c000+(x shl 11);
+  pack8to16:=i;
 end;
 
-
-procedure findvideo;
+function swapb(b:word):word;
+var i,j:word;
 begin
-  dactype:=_dac0;
-  extra:='';
-  _crt:='';
-  chip:=__none;
-  secondary:='';
-  name:='';
-  video:='none';
-  rp.ah:=18;
-  rp.bx:=$1010;
-  intr(16,rp);
-  if rp.bh<=1 then
-  begin
-    video:='EGA';
-    chip:=__ega;
-    if odd(inp($3cc)) then crtc:=$3d4
-                      else crtc:=$3b4;
-
-    mm:=rp.bl;
-    vio($1a00);
-    if rp.al=$1a then
-    begin
-      if (rp.bl<4) and (rp.bh>3) then
-      begin
-        old:=rp.bl;
-        rp.bl:=rp.bh;
-        rp.bh:=old;
-      end;
-      video:='MCGA';
-      case rp.bl of
-        2,4,6,10:_crt:='TTL Color';
-        1,5,7,11:_crt:='Monochrome';
-        8,12:_crt:='Analog Color';
-      end;
-      case rp.bh of
-        1:secondary:='Monochrome';
-        2:secondary:='CGA';
-      end;
-      findbios;
-      if (getbios($31,9)='') and (getbios($40,2)='22') then
-      begin
-        video:='EGA';       {@#%@  lying ATI EGA Wonder !}
-        name:='ATI EGA Wonder';
-
-      end else
-      if (rp.bl<10) or (rp.bl>12) then
-      begin
-        video:='VGA';
-        chip:=__vga;
-        mm:=256;
-        if _vesa then extra:=extra+'VESA ';
-        if _chipstech then
-        else if _paradise then
-        else if _video7 then
-        else if _genoa then
-        else if _everex then
-        else if _trident then
-        else if _ati then
-        else if _ahead then
-        else if _ncr then
-        else if _s3 then
-        else if _al2101 then
-        else if _mxic then
-        else if _cirrus54 then
-        else if _acumos then
-        else if _tseng then
-        else if _realtek then
-        else if _p2000 then
-        else if _yamaha then
-        else if _oak then
-        else if _cirrus then;
-
-        dacname:=testdac;
-
-      end;
-    end;
-  end;
+  j:=0;
+  for i:=0 to 7 do
+    if ((b shr i) and 1)>0 then inc(j,128 shr i);
+  swapb:=j;
 end;
 
 begin
-end.
+  if memmode=_pl4 then lbank:=(mm div 256)-1
+                  else lbank:=(mm div 64)-1;
+  move(map,mp,128);
+  move(map,bm,128);
+  case chip of
+    __al2101:begin
+               x0:=0;
+               w:=mm-1;
+               fillchar(mp,1024,$aa);
+               if memmode<=_p8 then
+               begin
+                 y:=0;
+                 for x:=0 to 127 do
+                 begin
+                   mp.w[y+x]:=al_packmap(bm[x]);
+                   if (x and 3)=3 then inc(y,4);
+                 end;
+               end
+               else
+                 for x:=0 to 127 do  {Double size for 64k mode}
+                   mp.l[x]:=al_packmap2(bm[x]);
+               CopyCurMap(1024);
+
+               wrinx2(crtc,$27,w);
+               x:=inp(crtc+6);     {force DAC to address mode}
+               x:=inp($3C0);
+               y:=rdinx($3C0,$31);
+               z:=rdinx($3C0,$32);
+               wrinx($3C0,$35,$f);
+               wrinx($3C0,$36,0);
+               wrinx($3C0,$31,y);
+               wrinx($3C0,$32,z);
+               outp($3C0,x);
+             end;
+    __atiGUP:begin          {Doesn't work yet}
+               for x:=0 to 127 do mp.l[x]:=$ffaa5500;
+
+               CopyCurMap(512);
+               outpw($1AEE,$5533);
+               outpw($1EEE,$2020);
+               l:={(mm*longint(1024)-512) div 4} 0;
+               outpw($AEE,l);
+               outpw($EEE,(l shr 16) or $8000);
+             end;
+  __chips452:begin
+               for x:=255 downto 0 do
+                 mp.w[x]:=mp.w[x div 4];
+               CopyCurMap(512);
+
+               wrinx(IOadr,$A,0);
+               wrinx2m(IOadr,$30,mm*longint(64)-$20);
+               wrinx(IOadr,$32,$ff);
+               wrinx(IOadr,$37,1);
+               wrinx(IOadr,$38,$FF);
+               wrinx(IOadr,$39,0);
+               wrinx(IOadr,$3A,$F);
+             end;
+    __compaq:begin
+               outp($3C8,$80);
+               for x:=0 to 127 do outp($13C7,255);
+               outp($3C8,0);
+               for x:=0 to 127 do outp($13C7,mp.b[x]);
+               outp($13C9,(inp($13C9) and $FC) or 2);
+             end;
+     __cir54:begin
+               clrinx(SEQ,$12,3);
+               wrinx(GRC,11,$24);
+               move(mp,mp.b[128],128);
+               CopyCurMap(256);
+               setHWcurcol($ff0000,$ff);
+               wrinx(SEQ,$13,$3f);
+             end;
+    __ET4W32:begin
+               for x:=0 to 511 do mp.l[x]:=$AAAAAAAA;
+               y:=128;
+            {   if memmode>_p8 then
+               begin
+                 for x:=127 downto 0 do
+                 begin
+                   mp.l[x+y]:=al_packmap2(bm[x]);
+                   if (x and 3)=0 then dec(y,4);
+                 end;
+                 CopyCurMap(2048);
+                 wrinx($217A,$EE,2);
+                 wrinx($217A,$EB,4);
+                 l:=mm*longint(256)-512;
+               end
+               else} begin
+                 for x:=127 downto 0 do
+                 begin
+                   mp.w[x+y]:=al_packmap(bm[x]);
+                   if (x and 3)=0 then dec(y,4);
+                 end;
+                 CopyCurMap(1024);
+                 wrinx($217A,$EE,1);
+                 wrinx($217A,$EB,2);
+                 l:=mm*longint(256)-256;
+               end;
+               wrinx3($217A,$E8,l);
+
+               wrinx($217A,$EF,2);
+               wrinx($217A,$ED,0);
+               wrinx($217A,$EC,0);
+               wrinx($217A,$E2,0);
+               wrinx($217A,$E6,0);
+               setinx($217A,$F7,$80);
+             end;
+    __IITAGX:if spcreg<>0 then
+             begin
+               outp(IOadr+10,$51);
+               outp(spcreg+3,$ff);
+               outp(IOadr+10,0);
+               outp($3C8,1);
+               outp(IOadr+10,$51);
+               outp($3C9,0);
+               outp($3C9,0);
+               outp($3C9,0);
+               outp($3C9,$FF);
+               outp($3C9,$FF);
+               outp($3C9,$FF);
+               outp(IOadr+10,0);
+               outp($3C8,$80);
+               for x:=1 to 128 do outp(spcreg+3,$ff);
+               for x:=1 to 128 do outp(spcreg+3,0);
+             end;
+       __ncr:begin
+               w:=(mm*longint(16))-4;    {256 bytes from the end of Vmem.}
+               y:=128;
+               for x:=127 downto 0 do
+               begin
+                 mp.b[x+y]:=swapb(mp.b[x]);
+                 if (x and 3)=0 then dec(y,4);
+               end;
+               for x:=0 to 31 do
+                 mp.l[x*2]:=mp.l[x*2+1] xor $FFFFFFFF;
+
+               wrinx2m(SEQ,$11,$101);
+               CopyCurMap(256);
+
+               wrinx(SEQ,$A,$f);
+               wrinx(SEQ,$B,$0);
+               wrinx2m(SEQ,$13,0);
+               wrinx2m(SEQ,$15,w);
+               wrinx(SEQ,$17,$ff);
+               wrinx(SEQ,$C,3);
+             end;
+  __PARADISE:begin
+               WD_wait;
+               outp($23C0,2);
+               for x:=127 downto 0 do
+                 mp.w[x]:=mp.b[x] shl 8+$ff;  {XOR cursor, how to set
+                                               fore&bkground colors ?}
+
+
+               CopyCurMap(256);
+               l:=mm*longint(256)-64;
+               WD_outl($1000,l);
+
+               if version=WD_90c33 then w:=$C000
+                                   else w:=$5000;
+               outpw($23C2,w);
+               if memmode>_p8 then w:=$810 else w:=$800;
+               outpw($23C2,w);
+               outpw($23C0,1);
+             end;
+        __S3:begin
+               if memmode>_p8 then
+               begin
+                 for x:=0 to 127 do
+                 begin
+                   y:=pack8to16(bm[x]);
+                   mp.l[x]:=(longint(lo(y)) shl 24)+(y and $FF00)+$FF00FF;
+                 end;
+                 for x:=256 to 511 do mp.w[x]:=$ff;
+               end
+               else begin
+                 for x:=0 to 255 do mp.l[x]:=$ffff;  {Transparent}
+                 y:=376;
+                 for x:=127 downto 0 do
+                 begin
+                   mp.b[x+y]:=bm[x];
+                   if (x and 1)=0 then dec(y,2);
+                   if (x and 3)=0 then dec(y,8);
+                 end;
+                 if memmode=_pk4 then
+                   for x:=0 to 511 do
+                     mp.b[x]:=lo((mp.b[x] shl 4)+(mp.b[x] shr 4));
+               end;
+               CopyCurMap(1024);
+               wrinx(crtc,$39,$A0);
+               wrinx(crtc,$45,2);
+               wrinx2(crtc,$4E,0);
+               wrinx(crtc,$4A,$FF);
+               wrinx(crtc,$4B,0);
+               wrinx2m(crtc,$4C,mm-1);
+               wrinx(crtc,$39,0);
+             end;
+    __Video7:begin
+               for x:=0 to 63 do mp.w[x]:=mp.w[x] xor $FFFF;
+               move(map,mp.b[128],128);
+               CopyCurMap(256);
+               wrinx(SEQ,$94,$FF);
+               modinx(SEQ,$FF,$60,(mm-1) shr 3);
+               setinx(SEQ,$A5,$80); {Enable cursor}
+             end;
+ __xbe,__xga:begin
+               wrinx(IOadr+10,$36,0);
+               fillchar(mp,1024,$ff);
+               wrinx2(IOadr+10,$60,0);
+               for x:=0 to 1024 do wrinx(IOadr+10,$6A,mp.b[x]);
+
+
+               setHWcurcol($ff0000,$ff);
+               wrinx(IOadr+10,$32,0);
+               wrinx(IOadr+10,$35,0);
+               wrinx(IOadr+10,$36,1);
+             end;
+  end;
+end;
+
+procedure setHWcurcol(fgcol,bkcol:longint);
+begin
+  case chip of
+     __cir54:begin
+               modinx(SEQ,$12,3,2);
+               outp($3C8,$ff);
+               outp($3C9,lo(fgcol) shr 2);
+               outp($3C9,hi(fgcol) shr 2);
+               outp($3C9,fgcol shr 18);
+               outp($3C8,0);
+               outp($3C9,lo(bkcol) shr 2);
+               outp($3C9,hi(bkcol) shr 2);
+               outp($3C9,bkcol shr 18);
+               modinx(SEQ,$12,3,1);
+             end;
+    __IITAGX,
+ __xbe,__XGA:begin
+               wrinx3m(IOadr+10,$38,fgcol);
+               wrinx3m(IOadr+10,$3B,bkcol);
+             end;
+  end;
+end;
+
+procedure HWcuronoff(on:boolean);
+begin
+  case chip of
+
+       __S3:begin
+              wrinx(crtc,$39,$a0);
+              modinx(crtc,$45,3,2+ord(on));
+              wrinx(crtc,$39,0);
+            end;
+ __paradise:begin
+              outp($23C0,2);
+              outpw($23C2,ord(on)*$800);
+            end;
+__xbe,__xga:wrinx(IOadr+10,$36,0);
+  end;
+end;
+
+procedure setHWcurpos(X,Y:word);
+var l:longint;
+begin
+
+  if extpixfact>1 then x:=x*extpixfact;
+  if extlinfact>1 then Y:=Y*extlinfact;
+  case chip of
+    __al2101:begin
+               if (rdinx(crtc,$19) and 1)=0 then y:=y*2;
+               if memmode>_p8 then x:=x*2;
+               wrinx(crtc,$21,x shr 3);
+               wrinx(crtc,$23,y shr 1);
+               modinx(crtc,$25,$7f,((x and 7) shl 2) + (y shr 9)
+                              +((y and 1) shl 6) or $20);
+             end;
+    __atiGUP:begin
+               outpw($12EE,x and 7);
+               outpw($16EE,y and 7);
+               x:=x and $FFF8;
+               case memmode of
+            _p15,_p16:x:=x*2;
+                 _p24:x:=x*3;
+               end;
+               l:=((y and $FFF8)*bytes+x) div 4;
+               outpw($2AEE,l);
+               outpw($2EEE,l shr 16);
+             end;
+  __chips452:begin
+               wrinx2m(IOadr,$33,x);
+               wrinx2m(IOadr,$35,y);
+             end;
+     __CIR54:BEGIN
+               outpw(SEQ,(x shl 5) or $10);
+               outpw(SEQ,(y shl 5) or $11);
+             END;
+    __compaq:begin
+               inline($fa);
+               outpw($93C8,x+32);
+               outpw($93C6,y+32);
+               inline($fb);
+             end;
+    __ET4W32:begin
+               case memmode of
+            _p15,_p16:x:=x*2;
+                 _p24:x:=x*3;
+               end;
+               wrinx2($217A,$E0,x);
+               wrinx2($217A,$E4,y);
+             end;
+    __IITAGX:if spcreg<>0 then
+             begin
+               outp(IOadr+10,$51);
+               outpw(spcreg,x);
+               outpw(spcreg,y);
+               outp(IOadr+10,0);
+             end;
+       __ncr:begin
+               wrinx2m(SEQ,$D,x);
+               wrinx2m(SEQ,$F,y);
+             end;
+  __PARADISE:begin
+               case memmode of
+            _p15,_p16:x:=x*2;
+                 _p24:x:=x*3;
+               end;
+               outp($23C0,2);
+               if version=WD_90c33 then
+               begin
+                 outpw($23C2,$D000+x);
+                 outpw($23C2,$E000+y);
+               end
+               else begin
+                 outpw($23C2,$6000+x);
+                 outpw($23C2,$7000+y);
+               end;
+             end;
+        __S3:begin
+               if memmode>_p8 then x:=x*2;
+               wrinx(crtc,$39,$A0);
+               wrinx2m(crtc,$46,x);
+               wrinx2m(crtc,$48,y);
+               wrinx(crtc,$45,3);
+               wrinx(crtc,$39,0);
+             end;
+    __Video7:begin
+               wrinx2m(SEQ,$9C,X);
+               wrinx2m(SEQ,$9E,Y);
+             end;
+ __xbe,__XGA:begin
+               wrinx2(IOadr+10,$30,x);
+               wrinx2(IOadr+10,$33,y);
+             end;
+  end;
+end;
+
+
+
+procedure AL_DstCoor(xst,yst:word);
+var l:longint;
+    w:word;
+begin
+  l:=yst*longint(pixels)+xst;
+  repeat until (inp($82AA) and $F)=0;
+  if memmode>_p8 then
+  begin
+    l:=l*2;
+    outpw($828A,pixels*2);
+  end
+  else outpw($828A,pixels);
+  outpw($8286,l);
+  outp( $8288,l shr 16);
+  outpw($829C,xst);
+  outpw($829E,yst);
+end;
+
+procedure AL_BlitArea(dx,dy:word);
+begin
+  if memmode>_p8 then dx:=dx*2;
+  outpw($828C,dx);
+  outpw($828E,dy);
+end;
+
+procedure AL_SrcCoor(xst,yst:word);
+var l:longint;
+    w:word;
+begin
+  l:=yst*longint(pixels)+xst;
+  if memmode>_p8 then
+  begin
+    l:=l*2;
+    outpw($8284,pixels*2);
+  end
+  else outpw($8284,pixels);
+  outpw($8280,l);
+  outp( $8282,l shr 16);
+end;
+
+procedure WD_coor(index,x,y:word);
+var l,b:longint;
+begin
+  b:=bytes;
+  if memmode<=_pl4 then b:=b*8;
+  case memmode of
+  _p15,_p16:x:=x*2;
+       _p24:x:=x*3;
+  end;
+  l:=b*y+x;
+  WD_outl(index,l);
+end;
+
+procedure WD_DstCoor(X,Y,dx,dy:word);
+var b:longint;
+begin
+  WD_coor($4000,X,Y);
+  b:=bytes;
+  if memmode<=_pl4 then b:=b*8;
+  case memmode of
+  _p15,_p16:dx:=dx*2;
+       _p24:dx:=dx*3;
+  end;
+  outpw($23C2,$6000+dx);
+  outpw($23C2,$7000+dy);
+  outpw($23C2,$8000+b);
+end;
+
+procedure P2000_DstCoor(X,Y,dx,dy:word);
+var l:longint;
+begin
+  l:=longint(pixels)*y+x;
+  if memmode>_p8 then
+  begin
+    dx:=dx*2;
+    l:=l*2;
+    wrinx2(GRC,$3A,pixels*2);
+  end
+  else wrinx2(GRC,$3A,pixels);
+  wrinx2(GRC,$33,dx);
+  wrinx3(GRC,$37,l);
+  wrinx2(GRC,$35,dy);
+end;
+
+procedure P2000_SrcCoor(X,Y:word);
+var l:longint;
+begin
+  l:=longint(pixels)*y+x;
+  if memmode>_p8 then l:=l*2;
+  if memmode=_pl4 then wrinx(GRC,5,0);  {set write mode 0}
+  wrinx3(GRC,$30,l);
+  wrinx2(GRC,$1E,pixels);
+end;
+
+procedure P2000_cmd(cmd:word);
+begin
+  wrinx(GRC,$3D,cmd);
+  repeat until (rdinx(GRC,$3D) and 1)=0;
+  wrinx(GRC,$3D,0);
+end;
+
+procedure S3_fill(xst,yst,dx,dy,col:word);
+begin
+  repeat until (inp($9AE8) and $FF)=0;
+  outpw($82E8,yst);
+  outpw($86E8,Xst);
+  outpw($96E8,dx);
+  outpw($A6E8,col);
+  outpw($BAE8,$27);
+  outpw($BEE8,dy-1);
+  outpw($BEE8,$A000);
+  outpw($9AE8,$40F1);
+end;
+
+procedure fillrect(xst,yst,dx,dy:word;col:longint);
+const
+  masks:array[0..3] of byte=(0,7,3,1);
+  maske:array[0..3] of byte=($F8,$FC,$FE,$FF);
+  masks4:array[0..7] of byte=(0,$7F,$3F,$1F,$F,7,3,1);
+  maske4:array[0..7] of byte=($80,$C0,$E0,$F0,$F8,$FC,$FE,$FF);
+var w:word;
+    l:longint;
+begin
+  case chip of
+    __al2101:begin
+               AL_DstCoor(xst,yst);
+               AL_BlitArea(dx,dy);
+               wrinx(GRC,$D,col);
+               outp( $8290,7);
+               outp( $8292,$D);
+               outp( $82AA,1);
+             end;
+    __compaq:begin
+               case memmode of
+            _pl4,_pk4:col:=(col and 15)*$11111111;
+                  _p8:col:=lo(col)*$1010101;
+               end;
+               repeat until (inp($33CE) and 1)=0;
+               if rdinx(GRC,$F)=$A5 then
+               begin
+                 if memmode=_p8 then
+                 begin
+                   l:=(yst*bytes+xst) shr 2;
+                   w:=bytes shr 2;
+                   outp($33C0,masks[xst and 3]);
+                   outp($33C1,maske[((xst+dx-1) and 3)]);
+                   outp($33C8,(-dx) and 3);
+                   outp($33C9,masks[dx and 3]);
+                   if ((xst and 3)=0) and ((dx and 3)=0) then inc(dx,4);
+                   outpw($23C2,(dx +(xst and 3) +3) shr 2);
+                 end
+                 else begin
+                   l:=yst*bytes+(xst shr 3);
+                   w:=bytes;
+                   outp($33C0,masks4[xst and 7]);
+                   outp($33C1,maske4[(xst+dx-1) and 7]);
+                   outp($33C8,(-dx) and 7);
+                   outp($33C9,masks4[dx and 7]);
+                   if ((xst and 7)=0) and ((dx and 7)=0) then inc(dx,8);
+                   outpw($23C2,(dx +(xst and 7) +7) shr 3);
+                 end;
+                 outpw($23C0,l);
+                 outpw($23CA,w);
+                 outpw($23CC,w);
+                { outpw($33C0,$ffff); }
+                 outp($33c7,$c);
+                { outpw($33c8,0); }
+                 w:=(l shr 2) and $C000;
+                 w:=w or ((dy shl 4) and $3000);
+                 outpw($23C4,dy+w);
+              {   if (xst and 3)>0 then inc(dx,4);
+                 if ((xst+dx-1) and 3)>0 then inc(dx,4); }
+                 outp($33CF,$30);
+               end
+               else begin
+                 outpw($63CC,xst);
+                 outpw($63CE,yst);
+                 outpw($23C2,dx);
+                 outpw($23C4,dy);
+                 outp($33CF,$C0);
+                 wrinx(GRC,$5A,2);
+               end;
+               outpw($33CA,col);
+               outpw($33CA,col);
+               outpw($33CC,col);
+               outpw($33CC,col);
+               outp($33CE,9);
+             end;
+     __cir54:begin
+             end;
+     __P2000:begin
+               wrinx(GRC,$3E,col);
+               P2000_DstCoor(xst,yst,dx,dy);
+               P2000_cmd($19);
+             end;
+  __paradise:begin
+               WD_wait;
+               outpw($23C2,$1000);
+               outpw($23C2,$E0FF);
+               outpw($23C2,$2000);
+               outpw($23C2,$3000);
+               WD_DstCoor(xst,yst,dx,dy);
+               outpw($23C2,$9300);
+               outpw($23C2,$A000+col);
+               w:=$808;
+               if memmode>_pl4 then w:=w+$100;
+               outpw($23C2,w);
+               WD_wait;
+             end;
+        __S3:if bytes>=1024 then
+             begin
+               S3_fill(xst,yst,dx,dy,lo(col));
+               if (memmode>_p8) then
+                 S3_fill(xst+1024,yst,dx,dy,hi(col));
+             end;
+{ __xbe,__xga:begin
+               repeat until (mem[xgaseg:$11] and $80)=0;
+               mem[xgaseg:$12]:=1;
+               mem[xgaseg:$48]:=3;
+               memw[xgaseg:$58]:=col;
+               memw[xgaseg:$78]:=xst;
+               memw[xgaseg:$7A]:=yst;
+               memw[xgaseg:$60]:=dx-1;
+               memw[xgaseg:$62]:=dy-1;
+
+
+               meml[xgaseg:$7C]:=$8118000;
+             end; }
+  end;
+end;
+
+procedure S3_copy(srcX,srcY,dstX,dstY,dx,dy:word);
+begin
+  repeat until (inp($9AE8) and $FF)=0;
+  outpw($82E8,SrcY);
+  outpw($86E8,SrcX);
+  outpw($8AE8,DstY);
+  outpw($8EE8,DstX);
+
+  outpw($96E8,dx);
+  outpw($BAE8,$67);
+  outpw($BEE8,dy-1);
+  outpw($BEE8,$A000);
+  repeat until (inp($9AE8) and $80)=0;
+  outpw($9AE8,$C0F1);
+end;
+
+procedure copyrect(srcX,srcY,dstX,dstY,dx,dy:word);
+var l:longint;
+    w,dir:word;
+    i1,i2:integer;
+begin
+  if (DstY<SrcY) or ((SrcY=DstY) and (DstX<SrcX)) then dir:=0
+  else begin
+    dir:=1;
+    SrcX:=SrcX+dx-1;
+    SrcY:=SrcY+dy-1;
+    DstX:=DstX+dx-1;
+    DstY:=DstY+dy-1;
+  end;
+  case chip of
+    __al2101:begin
+               AL_DstCoor(DstX,DstY);
+               AL_BlitArea(dx,dy);
+               AL_SrcCoor(SrcX,SrcY);
+               outp( $8290,7);
+               outpw($8292,$D);
+               outp( $82AA,2);
+             end;
+    __compaq:begin
+               repeat until (inp($33CE) and 1)=0;
+               if rdinx(GRC,$F)=$A5 then   {AVGA}
+               begin
+                 l :=srcy*bytes+srcx;
+                 w:=256;
+                 if (dir>0) then w:=$FF00;
+            {     begin
+                   l:=l+(dy-1)*bytes+(dx-1);
+                   w:=$ff00;
+                 end; }
+                 i1:=dsty-srcy;
+                 i2:=dstx-srcx;
+                 outpw($23C0,l shr 2);
+                 outpw($23CC,lo(i1)*256+lo(i2 shr 2));
+                 outp($23C2,dx shr 2);
+                 outpw($23CA,w{bytes shr 2});
+                 outpw($33C0,$ffff);
+                 outp($33c7,$c);
+                 outpw($33c8,0);
+                 w:=(w and $c00) or ((l shr 4) and $C000);
+                 w:=w or ((i1 shl 4) and $3000);
+                 outpw($23C4,dy+w);
+                 outp($33CF,$30);
+               end
+               else begin            {QVision}
+                 outpw($63CC,DstX);
+                 outpw($63CE,DstY);
+                 outpw($63C0,SrcX);
+                 outpw($63C2,SrcY);
+                 outpw($23C2,dx);
+                 outpw($23C4,dy);
+                 outpw($23CA,256);
+                 outpw($23CC,256);
+                 outp($33CF,$C0);
+                 wrinx(GRC,$5A,1);
+               end;
+               outp($33CE,$11);
+             end;
+     __cir54:begin
+               repeat until (rdinx(GRC,$31) and 1)=0;
+               case memmode of
+             _p15,_p16:w:=2;
+                  _p24:w:=3;
+               else w:=1;
+               end;
+               wrinx2(GRC,$20,dx*w);
+               wrinx2(GRC,$22,dy);
+               wrinx2(GRC,$24,bytes);
+               wrinx2(GRC,$26,bytes);
+               wrinx3(GRC,$28,dstY*bytes+dstX*w);
+               wrinx3(GRC,$2C,srcY*bytes+srcX*w);
+               wrinx(GRC,$32,$d);
+               wrinx(GRC,$31,2);
+             end;
+     __P2000:begin
+               P2000_SrcCoor(SrcX,SrcY);
+               P2000_DstCoor(DstX,DstY,dx,dy);
+               P2000_Cmd(5);
+             end;
+  __paradise:begin
+               WD_wait;
+               outpw($23C2,$1000);
+               outpw($23C2,$E0FF);
+               WD_DstCoor(DstX,DstY,dx,dy);
+               WD_Coor($2000,SrcX,SrcY);
+               outpw($23C2,$9300);
+               w:=$800;
+               if memmode>_pl4 then w:=w+$100;
+               if dir>0 then w:=w+$400;
+               outpw($23C2,w);
+               WD_wait;
+             end;
+        __S3:if bytes>=1024 then
+             begin
+               S3_copy(SrcX,SrcY,DstX,DstY,dx,dy);
+               if (memmode>_p8) then
+                 S3_copy(SrcX+1024,SrcY,DstX+1024,DstY,dx,dy);
+             end;
+ __xbe,__xga:begin
+               repeat until (mem[xgaseg:$11] and $80)=0;
+               mem[xgaseg:$48]:=3;
+               memw[xgaseg:$70]:=SrcX;
+               memw[xgaseg:$72]:=SrcY;
+               memw[xgaseg:$78]:=DstX;
+               memw[xgaseg:$7A]:=DstY;
+               memw[xgaseg:$60]:=dx-1;
+               memw[xgaseg:$62]:=dy-1;
+
+
+               memw[xgaseg:$7C]:=$8000;
+               memw[xgaseg:$7E]:=$811;
+             end;
+  end;
+end;
+
+procedure swp(var i,j:integer);
+var z:integer;
+begin
+  z:=i;
+  i:=j;
+  j:=z;
+end;
+
+procedure S3_line(x0,y0,x1,y1,col:integer);
+var w,z:word;
+begin
+  repeat until (inp($9AE8) and $FF)=0;
+  outpw($82E8,Y0);
+  outpw($86E8,X0);
+  w:=0;z:=0;
+  x1:=x1-x0;
+  if x1<0 then
+  begin
+    x1:=-x1;
+    w:=w or $20;
+    z:=1;
+  end;
+  y1:=y1-y0;
+  if y1<0 then
+  begin
+    y1:=-y1;
+    w:=w or $80;
+  end;
+  if x1<y1 then
+  begin
+    swp(x1,y1);
+    w:=w or $40;
+  end;
+  outpw($8AE8,2*y1);
+  outpw($8EE8,2*(y1-x1));
+  outpw($92E8,2*y1-x1-z);
+  repeat until (inp($9AE8) and $FF)=0;
+  outpw($96E8,x1);
+  outpw($A6E8,col);
+  outpw($BAE8,$27);
+  outpw($BEE8,$A000);
+  outpw($9AE8,$2017+w);
+end;
+
+
+procedure line(x0,y0,x1,y1:integer;col:longint);
+var l:longint;
+  z,w:word;
+begin
+  case chip of
+    __al2101:begin
+               AL_DstCoor(x0,y0);
+               wrinx(GRC,$D,col);
+               outpw($82A8,$FFFF);
+               w:=0;
+               x1:=x1-x0;
+               if x1<0 then
+               begin
+                 x1:=-x1;
+                 w:=w or $100;
+               end;
+               if memmode>_p8 then x1:=x1*2;
+               y1:=y1-y0;
+               if y1<0 then
+               begin
+                 y1:=-y1;
+                 w:=w or $200;
+               end;
+               if x1<y1 then
+               begin
+                 swp(x1,y1);
+                 w:=w or $400;
+               end;
+               outpw($82A2,2*y1);
+               outpw($82A6,2*y1-x1);
+               outpw($82A4,2*(y1-x1));
+               outpw($828E,x1+1);
+               outpw($8292,$80D+w);
+               outp ($8290,0);
+               outp ($82AA,8);
+             end;
+        __S3:if bytes>=1024 then
+             begin
+               S3_line(x0,y0,x1,y1,lo(col));
+               if (memmode>_p8) then
+                 S3_line(x0+1024,y0,x1+1024,y1,hi(col));
+             end;
+ __xbe,__xga:begin
+               repeat until (mem[xgaseg:$11] and $80)=0;
+               meml[xgaseg:$7C]:=$5010000;
+
+             end;
+  end;
+end;
+
+
+
+
+
+
+
+
+
+
+begin
+end
+.

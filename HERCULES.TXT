@@ -1,34 +1,110 @@
 Hercules Graphics Adapter
 
-  3B0h  synonym for 3B4h
+3B0h  synonym for 3B4h
 
-  3B1h  synonym for 3B5h
+3B1h  synonym for 3B5h
 
-  3B2h  synonym for 3B4h
+3B2h  synonym for 3B4h
 
-  3B3h  synonym for 3B5h
+3B3h  synonym for 3B5h
+
+
+3B4h (W): Index register.
+          The value written to this register selects which of the data
+          registers will be accessed at 3B5h.
+
+3B4h index 00h (W): Horizontal Total Register
+Bit 0-7  Number of characters (-1) in a scan line incl. retrace.
+
+3B4h index 01h (W): Horizontal Displayed Register
+Bit 0-7  Number of characters (-1) displayed during a scan line.
+
+3Bh index 02h (W): Horizontal Sync Position Register
+Bit 0-7  Number of characters displayed before Horizontal Sync pulse starts.
+
+3B4h index 03h (W): Horizontal Sync Width Register
+Bit 0-7  Number of character clocks during a Horizontal Sync pulse.
+
+3B4h index 04h (W): Vertical Total Register
+Bit 0-6  Number of character rows in a frame. This is adjusted by the number
+         of scanlines in a character (index 9) and the Vertical Adjust (index
+         5).
+
+3B4h index 05h (W): Vertical Total Adjust Register
+Bit 0-3  Number of scanlines added to the Vertical Total time.
+
+3B4h index 06h (W): Vertical Displayed Register
+Bit 0-6  Number of character rows displayed per frame.
+
+3B4h index 07h (W): Vertical SyncPosition Register
+Bit 0-6  Number of character rows displayed before the Vertical Sync pulse
+         starts.
+
+3B4h index 08h (W): Interlace Mode Register
+
+3B4h index 09h (W): Maximum Scan Line Register
+Bit 0-3  Number of scanlines (-1) in a character row.
+
+3B4h index 0Ah (W): Cursor Start Register
+Bit 0-4  The scanline (starting from 0) within the character where the
+         cursor starts.
+    5-6  Cursor Attributes:
+           0,2: Cursor is blinking at the blink rate.
+             1: Cursor is turned off.
+             3: Cursor is blinking at half the blink rate.
+         The default blink rate is 1/16 of the frame rate (8 frames on, 8
+         off).
+
+3B4h index 0Bh (W): Cursor End Register
+Bit 0-4  The scanline (starting from 0) within the character where the
+         cursor ends. If the start position (index 0Ah) is larger than this
+         value, no cursor is shown. 
+
+3B4h index 0Ch (W): Start Address High Register
+Bit 0-5  The upper 6 bits of the address of the start of the display.
+         The lower 8 bits are in index 0Dh.
+
+3B4h index 0Dh (W): Start Address Low Register
+Bit 0-7  The lower 8 bits of the address of the start of the display.
+         The upper 6 bits are in index 0Ch.
+
+3B4h index 0Eh (W): Cursor Location High Register
+Bit 0-5  The upper 6 bits of the address of the start of the cursor.
+         The lower 8 bits are in index 0Fh.
+
+3B4h index 0Fh (W): Cursor Location Low Register
+Bit 0-7  The lower 8 bits of the address of the start of the cursor.
+         The upper 6 bits are in index 0Eh.
+
+3B4h index 10h (W): Light Pen High Register
+Bit 0-5  The upper 6 bits of the latched address of the lightpen strobe.
+         The lower 8 bits are in index 11h.
+
+3B4h index 11h (W): Light Pen Low Register
+Bit 0-7  The lower 8 bits of the latched address of the lightpen strobe.
+         The upper 6 bits are in index 10h.
 
 
 
-  3B8h (W)
-  bit 1  Hercules graphics mode if set, text mode else
+3B8h (W)
+bit   1  Hercules graphics mode if set, text mode else
       3  Video enabled if set
       5  Blink enabled if set
       7  Graphics page 1 displayed if set, page 0 else
 
-  3BAh (R)  Status Register
-  bit 0  Horizontal sync
+3BAh (R):  Status Register
+bit   0  Horizontal sync
       3  Video signal
       7  Vertical sync
 
-  3BAh (W)  Mode Select Register
-  bit 3  132-column text for monochrome
+3BAh (W):  Mode Select Register
+bit   3  132-column text for monochrome
 
-  3BBh (W)  Lightpen Strobe Reset
-	 Writing to this register will clear the lightpen strobe.
+3BBh (W):  Lightpen Strobe Reset
+         Writing to this register will clear the lightpen strobe.
 
-  3BFh (W)
-  bit 0  Setting of graphics mode bit (3B8h bit 1) enabled if set
+3BFh (W):
+bit   0  Setting of graphics mode bit (3B8h bit 1) enabled if set
       1  Setting of graphics page bit (3B8h bit 7) enabled if set
 
 
@@ -49,115 +125,8 @@ Hercules Graphics Adapter
     if x=0 then __MDA__
     else 
       case y and $70 of
-	$50:Hercules Incolor;
-	$10:Hercules Graphics Plus
+        $50:Hercules Incolor;
+        $10:Hercules Graphics Plus
       else Hercules Graphics Card;  
       end;
   end;
-
-
-
-
-  Hercules GRAFIX BIOS Interface:
-  GRAFIX is a memory resident program, not a part of the Hercules Graphics Card.
-
-----------1040-------------------------------
-INT 10 - VIDEO - SET GRAPHICS MODE (Hercules GRAFIX)
-	AH = 40h
-SeeAlso: AH=41h
-----------1041-------------------------------
-INT 10 - VIDEO - SET TEXT MODE (Hercules GRAFIX)
-	AH = 41h
-SeeAlso: AH=40h
-----------1042-------------------------------
-INT 10 - VIDEO - CLEAR CURRENT PAGE (Hercules GRAFIX)
-	AH = 42h
-SeeAlso: AH=45h
-----------1043-------------------------------
-INT 10 - VIDEO - SELECT DRAWING PAGE (Hercules GRAFIX)
-	AH = 43h
-	AL = page number (0,1)
-SeeAlso: AH=44h,AH=45h
-----------1044-------------------------------
-INT 10 - VIDEO - SELECT DRAWING FUNCTION (Hercules GRAFIX)
-	AH = 44h
-	AL = drawing function
-	     00h clear pixels
-	     01h set pixels
-	     02h invert pixels
-SeeAlso: AH=44h,AH=46h,AH=4Ch,AH=4Dh
-----------1045-------------------------------
-INT 10 - VIDEO - SELECT PAGE TO DISPLAY (Hercules GRAFIX)
-	AH = 45h
-	AL = page number (0,1)
-SeeAlso: AH=42h,AH=43h
-----------1046-------------------------------
-INT 10 - VIDEO - DRAW ONE PIXEL (Hercules GRAFIX)
-	AH = 46h
-	DI = x (0-720)
-	BP = y (0-347)
-Note: function 44h determines operation and function 43h which page to use
-SeeAlso: AH=0Ch,AH=47h,AH=49h,AH=4Ch,AH=4Dh
-----------1047-------------------------------
-INT 10 - VIDEO - FIND PIXEL VALUE (Hercules GRAFIX)
-	AH = 47h
-	DI = x (0-720)
-	BP = y (0-347)
-Return: AL = 00h pixel clear
-	AL = 01h pixel set
-Note: function 43h specifies which page is used
-SeeAlso: AH=0Dh,AH=46h
-----------1048-------------------------------
-INT 10 - VIDEO - MOVE TO POINT (Hercules GRAFIX)
-	AH = 48h
-	DI = x (0-720)
-	BP = y (0-347)
-SeeAlso: AH=49h
-----------1049-------------------------------
-INT 10 - VIDEO - DRAW TO POINT (Hercules GRAFIX)
-	AH = 49h
-	DI = x (0-720)
-	BP = y (0-347)
-Note: function 48h or 49h specify first point, 44h operation and 43h
-      page to use
-SeeAlso: AH=43h,AH=44h,AH=48h,AH=4Ch,P = y (0-347)
-Note: unlike the other BIOS character functions character position is
-      specified in pixels rather than rows
-	DI = x coordinate of lower left corner
-	BP = y coordinate of lower left corner
-	BX = height in pixels
-	CX = width in pixels
-Note: draws a solid rectangle
-SeeAlso: AH=4Eh
-----------104B-------------------------------
-INT 10 - VIDEO - DISPLAY CHARACTER (Hercules GRAFIX)
-	AH = 4Bh
-	AL = character to display
-	DI = x (0-720)
-	BP = y (0-347)
-Note: unlike the other BIOS character functions character position is
-      specified in pixels rather than rows and columns
-SeeAlso: AH=09h,AH=0Ah
-----------104C-------------------------------
-INT 10 - VIDEO - DRAW ARC (Hercules GRAFIX)
-	AH = 4Ch
-	AL = quadrant (1 = upper right, 2 = upper left, et cetera)
-	DI = x coordinate of center
-	BP = y coordinate of center
-	BX = radius
-SeeAlso: AH=49h,AH=4Dh
-----------104D-------------------------------
-INT 10 - VIDEO - DRAW CIRCLE (Hercules GRAFIX)
-	AH = 4Dh
-	DI = x of center
-	BP = y of center
-	BX = radius
-SeeAlso: AH=49h,AH=4Ch
-----------104E-------------------------------
-INT 10 - VIDEO - FILL AREA (Hercules GRAFIX)
-	AH = 4Eh
-	DI = x coordinate of an interior point
-	BP = y coordinate of an interior point
-Notes: fills convex polygonal areas
-       the first fill makes the figure solid, the second erases it
-SeeAlso: AH=4A

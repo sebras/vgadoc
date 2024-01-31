@@ -1,6 +1,169 @@
 
 uses dos,crt,supervga;
 
+const
+  copyright='WHATVGA v. 1.50   18/jan/94    Copyright 1991-94  Finn Thoegersen';
+
+  SWversion = 1500;    {1495 = 1.49e, 1500 = 1.50}
+
+  menuchars:array[1..55] of char=
+      'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&()[]{}-_=+/?';
+
+var
+  af_fil:file;
+  af_buf:array[0..2048] of byte;
+  af_pos:word;
+  af_rec:_AT2;
+  af_cmt:string;
+  af_tst:_AT3;
+  af_fail:boolean;
+  af_filename:string[12];
+
+procedure AddAFbuf(var b;bytes:word);
+begin
+  move(b,af_buf[af_pos],bytes);
+  inc(af_pos,bytes);
+end;
+
+procedure WrAFbuf(typ:byte);
+begin
+  af_buf[0]:=typ;
+  move(af_pos,af_buf[1],2);
+  blockwrite(af_fil,af_buf,af_pos);
+  close(af_fil);
+  reset(af_fil,1);        {Flushes file output}
+  seek(af_fil,filesize(af_fil));
+  af_pos:=3;
+end;
+
+function getComment(tx:string):string;
+var s,s1:string;
+begin
+  writeln('Please enter '+tx+' (max 3 lines):');
+  s:='';s1:='';
+  readln(s1);
+  s1:=strip(s1);
+  if s1<>'' then
+  begin
+    s:=s1;
+    readln(s1);s1:=strip(s1);
+    if s1<>'' then
+    begin
+      s:=s+' '+s1;
+      readln(s1);s1:=strip(s1);
+      if s1<>'' then
+      begin
+        s:=s+' '+s1;
+        writeln;
+      end;
+    end;
+  end;
+  getComment:=s;
+end;
+
+function getYN:boolean;
+const YN:array[0..1] of string[3]=('No','Yes');
+var ret:integer;
+begin
+  ret:=-1;
+  repeat
+    case getkey of
+      ord('y'),ord('Y'):ret:=1;
+      ord('n'),ord('N'):ret:=0;
+                 ch_esc:ret:=0;
+    end;
+  until ret>-1;
+  getYn:=boolean(ret);
+  writeln(YN[ret]);
+  if ret=0 then af_fail:=true;
+end;
+
+
+procedure InitAFFile(cursel:word);
+var x:word;
+  hdr:_AT0;
+  mm:mmods;
+begin
+  x:=0;
+  repeat
+    inc(x);     {Find first free file number}
+    af_filename:='WHVGA'+istr(x)+'.TST';
+    assign(af_fil,af_filename);
+    {$i-}
+    reset(af_fil,1);
+    {$i+}
+    if ioresult=0 then close(af_fil) else x:=0;
+  until x=0;
+  rewrite(af_fil,1);
+  af_pos:=3;
+  af_fail:=false;
+
+  hdr.SWvers := SWversion;
+  hdr.vid_sys:= Vids;
+  hdr.cur_vid:= cursel;
+  getFtime(af_fil,hdr.curtime);
+  AddAFbuf(hdr,sizeof(hdr));
+
+  af_cmt:=getComment('your Email address');
+  AddAFbuf(af_cmt,length(af_cmt)+1);
+
+  af_cmt:=getComment('your name & address');
+  AddAFbuf(af_cmt,length(af_cmt)+1);
+  af_cmt:=getComment('your video&monitor description');
+  AddAFbuf(af_cmt,length(af_cmt)+1);
+  af_cmt:=getComment('your system description');
+  AddAFbuf(af_cmt,length(af_cmt)+1);
+
+  af_cmt:='';
+  for mm:=_text to _p32 do   {Build the Mode Name table}
+    af_cmt:=af_cmt+copy(mmodenames[mm]+'    ',1,4);
+  AddAFbuf(af_cmt,length(af_cmt)+1);
+
+  WrAFbuf(0);
+end;
+
+
+function getmenkey:integer;
+var x,c:word;
+begin
+  c:=getkey;
+  if (c>=ord('a')) and (c<=ord('z')) then c:=c-32;
+  getmenkey:=0;
+  for x:=1 to 55 do
+    if chr(c)=menuchars[x] then getmenkey:=x;
+  if c=Ch_Esc then getmenkey:=-1;
+end;
+
+
+procedure clearmemory;
+var x,y,maxbank:word;
+begin
+  case memmode of
+    _text,_text2,_text4:
+          begin
+            {mov es,[vseg]  cld  xor di,di  mov ax,$720  mov cx,$4000  rep stosw}
+            inline($8e/6/>vseg/$fc/$31/$ff/$B8/>$720/$B9/>$4000/$f3/$ab);
+          end;
+     _cga1,_cga2:
+          fillchar(mem[$B800:0],$8000,0);
+_pl2,_pl4:begin
+            wrinx(GRC,0,0);
+            wrinx(GRC,1,15);    (* planar modes *)
+            wrinx(GRC,8,255);
+            modinx(GRC,5,3,0);
+            maxbank:=pred(mm div 256);
+          end;
+  else maxbank:=pred(mm div 64);
+  end;
+  if memmode>_cga2 then
+    for x:=0 to maxbank do
+    begin
+      setbank(x);
+      {mov es,[vseg]  cld  xor di,di  xor ax,ax  mov cx,$8000  rep stosw}
+      inline($8e/6/>vseg/$fc/$31/$ff/$31/$C0/$B9/>$8000/$f3/$ab);
+    end;
+end;
+
 
 procedure setpix(x,y:word;col:longint);
 const
@@ -13,64 +176,64 @@ var l:longint;
     m,z:word;
 begin
   case memmode of
-   _cga2:begin
+   _cga1:begin
            z:=(y shr 1)*bytes+(x shr 3);
            if odd(y) then inc(z,8192);
            mem[$b800:z]:=(mem[$b800:z] and (255 xor msk[x and 7]))
                          or ((col and 1) shl (7-(x and 7)));
          end;
-   _cga4:begin
+   _cga2:begin
            z:=(y shr 1)*bytes+(x shr 2);
            if odd(y) then inc(z,8192);
            mem[$b800:z]:=(mem[$b800:z] and mscga4[x and 3])
                          or (col and 3) shl shcga4[x and 3];
          end;
-    _pl2:begin
+    _pl1:begin
            l:=y*bytes+(x shr 3);
-           wrinx($3ce,3,0);
-           wrinx($3ce,5,2);
-           wrinx($3c4,2,1);
-           wrinx($3ce,8,msk[x and 7]);
+           wrinx(GRC,3,0);
+           wrinx(GRC,5,2);
+           wrinx(SEQ,2,1);
+           wrinx(GRC,8,msk[x and 7]);
            setbank(l shr 16);
            z:=mem[vseg:word(l)];
            mem[vseg:word(l)]:=col;
          end;
-   _pl2e:begin
-           l:=y*128+(x shr 3);
-           modinx($3ce,5,3,0);
-           wrinx($3c4,2,15);
-           wrinx($3ce,0,col*3);
-           wrinx($3ce,1,3);
-           wrinx($3ce,8,msk[x and 7]);
+   _pl1e:begin
+           l:=y*bytes+(x shr 3);
+           modinx(GRC,5,3,0);
+           wrinx(SEQ,2,15);
+           wrinx(GRC,0,col*3);
+           wrinx(GRC,1,3);
+           wrinx(GRC,8,msk[x and 7]);
            z:=mem[vseg:word(l)];
            mem[vseg:word(l)]:=0;
          end;
-    _pl4:begin
+    _pl2:begin
            l:=y*bytes+(x shr 4);
-           wrinx($3ce,3,0);
-           wrinx($3ce,5,2);
-           wrinx($3c4,2,plane[(x shr 3) and 1]);
-           wrinx($3ce,8,msk[x and 7]);
+           wrinx(GRC,3,0);
+           wrinx(GRC,5,2);
+           wrinx(SEQ,2,plane[(x shr 3) and 1]);
+           wrinx(GRC,8,msk[x and 7]);
            setbank(l shr 16);
            z:=mem[vseg:word(l)];
            mem[vseg:word(l)]:=col;
          end;
-    _pk4:begin
+    _pk2:begin
            l:=y*bytes+(x shr 2);
            setbank(l shr 16);
            z:=mem[vseg:word(l)] and mscga4[x and 3];
            mem[vseg:word(l)]:=z or (col shl shcga4[x and 3]);
          end;
-   _pl16:begin
+    _pl4:begin
            l:=y*bytes+(x shr 3);
-           wrinx($3ce,3,0);
-           wrinx($3ce,5,2);
-           wrinx($3ce,8,msk[x and 7]);
+           wrinx(GRC,3,0);
+           wrinx(GRC,5,2);
+           wrinx(GRC,8,msk[x and 7]);
            setbank(l shr 16);
            z:=mem[vseg:word(l)];
            mem[vseg:word(l)]:=col;
          end;
-   _pk16:begin
+    _pk4:begin
            l:=y*bytes+(x shr 1);
            setbank(l shr 16);
            z:=mem[vseg:word(l)];
@@ -78,18 +241,18 @@ begin
                      else z:=z and $f0+col;
            mem[vseg:word(l)]:=z;
          end;
-   _p256:begin
+     _p8:begin
            l:=y*bytes+x;
            setbank(l shr 16);
            mem[vseg:word(l)]:=col;
          end;
-   _p32k,_p64k:
+   _p15,_p16:
          begin
            l:=y*bytes+(x shl 1);
            setbank(l shr 16);
            memw[vseg:word(l)]:=col;
          end;
-   _p16m:begin
+    _p24:begin
            l:=y*bytes+(x*3);
            z:=word(l);
            m:=l shr 16;
@@ -103,38 +266,28 @@ begin
              mem[vseg:z+2]:=col shr 16;
            end;
          end;
+    _p32:begin
+           l:=y*bytes+(x shl 2);
+           setbank(l shr 16);
+           meml[vseg:word(l)]:=col;
+         end;
     else ;
   end;
 end;
-
-
-procedure setvstartxy(x,y:word);
-var l:longint;
-begin
-  l:=0;
-  case memmode of
-          _pl16:l:=(bytes*y+(x div 8))*4;
-          _p256:l:=bytes*y+x;
-    _p32k,_p64k:l:=bytes*y+x*2;
-          _p16m:l:=bytes*y+x*3;
-  end;
-  setvstart(l);
-end;
-
 
 function whitecol:longint;
 var col:longint;
 begin
   case memmode of
-    _cga2,_pl2e,
-     _pl2:col:=1;
-    _cga4,_pk4
-    ,_pl4:col:=3;
-    _pk16,_pl16,
-    _p256:col:=15;
-    _p32k:col:=$7fff;
-    _p64k:col:=$ffff;
-    _p16m:col:=$ffffff;
+    _cga1,_pl1e,
+     _pl1:col:=1;
+    _cga2,_pk2
+    ,_pl2:col:=3;
+    _pk4,_pl4,
+      _p8:col:=15;
+     _p15:col:=$7fff;
+     _p16:col:=$ffff;
+_p24,_p32:col:=$ffffff;
   else
   end;
   whitecol:=col;
@@ -154,15 +307,15 @@ begin
   rp.bh:=6;
   vio($1130);
   case memmode of
-    _cga2,_pl2e,
-     _pl2:col:=1;
-    _cga4,_pk4
-    ,_pl4:col:=3;
-    _pk16,_pl16,
-    _p256:col:=15;
-    _p32k:col:=$7fff;
-    _p64k:col:=$ffff;
-    _p16m:col:=$ffffff;
+    _cga1,_pl1e,
+     _pl1:col:=1;
+    _cga2,_pk2
+    ,_pl2:col:=3;
+    _pk4,_pl4,
+      _p8:col:=15;
+     _p15:col:=$7fff;
+     _p16:col:=$ffff;
+_p24,_p32:col:=$ffffff;
   else
   end;
   p:=ptr(rp.es,rp.bp);
@@ -184,13 +337,6 @@ begin
 end;
 
 
-procedure drawtestpattern(nam:string);
-                       {Draw Test pattern.}
-var s:string;
-  l:longint;
-  x,y,yst:word;
-  white:longint;
-
   function rgb(r,g,b:word):longint;
   begin
     r:=lo(r);g:=lo(g);b:=lo(b);
@@ -206,7 +352,33 @@ var s:string;
   end;
 
 
-  procedure wline(stx,sty,ex,ey:integer);
+
+procedure plotchar(x,y,ch:word);
+begin
+  mem[vseg:(y*pixels+x) shl 1]:=ch;
+end;
+
+procedure plotchat(x,y,ch,at:word);
+begin
+  memw[vseg:(y*pixels+x) shl 1]:=at shl 8+ch;
+end;
+
+procedure plotstr(x,y:word;s:string);
+var z:word;
+begin
+  for z:=1 to length(s) do
+    plotchar(x+z-1,y,ord(s[z]));
+end;
+
+
+procedure drawtestpattern(nam:string);
+                       {Draw Test pattern.}
+var s:string;
+  l:longint;
+  x,y,yst:word;
+  white:longint;
+
+  procedure wline(stx,sty,ex,ey:integer;col:longint);
   var x,y,d,mx,my:integer;
      l:longint;
   begin
@@ -220,7 +392,7 @@ var s:string;
     my:=ey-sty;
     d:=0;
     repeat
-      l:=rgb(y,y,y);
+      if col=0 then l:=rgb(y,y,y) else l:=col;
       y:=(y+1) and 255;
       setpix(stx,sty,l);
       if abs(d+mx)<abs(d-my) then
@@ -238,107 +410,139 @@ var s:string;
   end;
 
 begin
-
-  white:=whitecol;
-
-  wline(50,30,pixels-50,30);
-  wline(50,lins-30,pixels-50,lins-30);
-
-  wline(50,30,50,lins-30);
-  wline(pixels-50,30,pixels-50,lins-30);
-  wline(50,30,pixels-50,lins-30);
-
-  wline(pixels-50,30,50,lins-30);
-
-  if lins>200 then yst:=50 else yst:=10;
-  wrtext(10,yst,name+' with '+istr(mm)+' Kbytes.');
-  wrtext(10,yst+25,nam);
-
-  for x:=1 to (pixels-10) div 100 do
+  if memmode<=_TEXT4 then
   begin
-    for y:=1 to 10 do
-      setpix(x*100,y,white);
-    wrtext(x*100+3,1,istr(x));
-  end;
+    {Text modes}
 
-  for x:=1 to (lins-10) div 100 do
-  begin
-    for y:=1 to 10 do
-      setpix(y,x*100,white);
-    wrtext(1,x*100+2,istr(x));
-  end;
+  {  ClearMemory; }
+    for x:=0 to pixels-1 do
+    begin
+      plotchar(x,0,(x mod 10)+ord('0'));
+      if (x mod 10)=0 then
+        plotchar(x,1,((x div 10) mod 10)+ord('0'));
+      plotchar(x,lins-1,ord('.'));
+    end;
+    for x:=0 to lins-1 do
+    begin
+      plotchar(0,x,(x mod 10)+ord('0'));
+      if (x mod 10)=0 then
+        plotstr(0,x,istr(x));
+      plotchar(pixels-1,x,ord('.'));
+    end;
+    plotstr(5,5,nam);
+    for x:=0 to 255 do
+      plotchat(x and 15+10,x shr 4+7,65,x);
+    plotstr((pixels-30) div 2,lins,'This line shouldn''t be seen!!');
+  end
+  else begin
 
-  case memmode of
-     _pk4,
-     _pl4:for x:=0 to 63 do
-            for y:=0 to 63 do
-              setpix(30+x,yst+y+50,y shr 3);
-    _pk16,
-    _pl16:for x:=0 to 127 do
-            if lins<250 then
+    white:=whitecol;
+
+    wline(50,30,pixels-50,30 ,0);
+    wline(50,lins-30,pixels-50,lins-30 ,0);
+
+    wline(50,30,50,lins-30 ,0);
+    wline(pixels-50,30,pixels-50,lins-30 ,0);
+    wline(50,30,pixels-50,lins-30 ,0);
+
+    wline(pixels-50,30,50,lins-30 ,0);
+
+    if lins>200 then yst:=50 else yst:=18;
+    wrtext(10,yst,name+' with '+istr(mm)+' Kb.');
+    wrtext(10,yst+25,nam);
+
+    for x:=1 to (pixels-10) div 100 do
+    begin
+      for y:=1 to 10 do
+        setpix(x*100,y,white);
+      wrtext(x*100+3,1,istr(x));
+    end;
+
+    for x:=1 to (lins-10) div 100 do
+    begin
+      for y:=1 to 10 do
+        setpix(y,x*100,white);
+      wrtext(1,x*100+2,istr(x));
+    end;
+
+    case memmode of
+       _pk2,
+       _pl2:for x:=0 to 63 do
               for y:=0 to 63 do
-                setpix(30+x,yst+y+50,y shr 2)
-            else
-              for y:=0 to 127 do
                 setpix(30+x,yst+y+50,y shr 3);
-    _p256:for x:=0 to 127 do
-            if lins<250 then
-              for y:=0 to 63 do
-                setpix(30+x,yst+50+y,((y shl 2) and 240) +(x shr 3))
-            else
-              for y:=0 to 127 do
-                setpix(30+x,yst+50+y,((y shl 1) and 240)+(x shr 3));
+      _pk4,
+       _pl4:for x:=0 to 127 do
+              if lins<250 then
+                for y:=0 to 63 do
+                  setpix(30+x,yst+y+50,y shr 2)
+              else
+                for y:=0 to 127 do
+                  setpix(30+x,yst+y+50,y shr 3);
+        _p8:for x:=0 to 127 do
+              if lins<250 then
+                for y:=0 to 63 do
+                  setpix(30+x,yst+50+y,((y shl 2) and 240) +(x shr 3))
+              else
+                for y:=0 to 127 do
+                  setpix(30+x,yst+50+y,((y shl 1) and 240)+(x shr 3));
 
-    _p32k,_p64k,_p16m:
-          if pixels<600 then
-          begin
-            for x:=0 to 63 do
+      _p15,_p16,_p24,_p32:
+            if pixels<600 then
             begin
-              for y:=0 to 63 do
+              for x:=0 to 63 do
               begin
-                setpix(30+x,100+y,rgb(x*4,y*4,0));
-                setpix(110+x,100+y,rgb(x*4,0,y*4));
-                setpix(190+x,100+y,rgb(0,x*4,y*4));
+                for y:=0 to 63 do
+                begin
+                  setpix(30+x,100+y,rgb(x*4,y*4,0));
+                  setpix(110+x,100+y,rgb(x*4,0,y*4));
+                  setpix(190+x,100+y,rgb(0,x*4,y*4));
+                end;
               end;
+              for x:=0 to 255 do
+                for y:=170 to 179 do
+                begin
+                  setpix(x,y   ,rgb(x,0,0));
+                  setpix(x,y+10,rgb(0,x,0));
+                  setpix(x,y+20,rgb(0,0,x));
+                end;
+            end
+            else begin
+              for x:=0 to 127 do
+                for y:=0 to 127 do
+                begin
+                  setpix( 30+x,120+y,rgb(x*2,y*2,0));
+                  setpix(200+x,120+y,rgb(x*2,0,y*2));
+                  setpix(370+x,120+y,rgb(0,x*2,y*2));
+                end;
+              for x:=0 to 511 do
+                for y:=260 to 269 do
+                begin
+                  setpix(x,y   ,rgb(x shr 1,0,0));
+                  setpix(x,y+10,rgb(0,x shr 1,0));
+                  setpix(x,y+20,rgb(0,0,x shr 1));
+                end;
             end;
-            for x:=0 to 255 do
-              for y:=170 to 179 do
-              begin
-                setpix(x,y,rgb(x,0,0));
-                setpix(x,y+10,rgb(0,x,0));
-                setpix(x,y+20,rgb(0,0,x));
-              end;
-          end
-          else begin
-            for x:=0 to 127 do
-              for y:=0 to 127 do
-              begin
-                setpix(30+x,120+y,rgb(x*2,y*2,0));
-                setpix(200+x,120+y,rgb(x*2,0,y*2));
-                setpix(370+x,120+y,rgb(0,x*2,y*2));
-              end;
-            for x:=0 to 511 do
-              for y:=260 to 269 do
-              begin
-                setpix(x,y,rgb(x shr 1,0,0));
-                setpix(x,y+10,rgb(0,x shr 1,0));
-                setpix(x,y+20,rgb(0,0,x shr 1));
-              end;
-          end;
 
+    end;
+    wline(0,0,10, 0 ,whitecol);
+    wline(0,0, 0,10 ,whitecol);
+    wline(0,0,10,10 ,whitecol);
+
+    wline(pixels-11, 0,pixels-1, 0 ,whitecol);
+    wline(pixels-1 , 0,pixels-1,10 ,whitecol);
+    wline(pixels-11,10,pixels-1, 0 ,whitecol);
+
+    wline(0,lins-11, 0,lins-1  ,whitecol);
+    wline(0,lins-1 ,10,lins-1  ,whitecol);
+    wline(0,lins-1 ,10,lins-11 ,whitecol);
+
+    wline(pixels-11,lins-1 ,pixels-1,lins-1 ,whitecol);
+    wline(pixels-1 ,lins-11,pixels-1,lins-1 ,whitecol);
+    wline(pixels-11,lins-11,pixels-1,lins-1 ,whitecol);
   end;
 end;
 
-
-procedure testvmode;
-begin
-  drawtestpattern('Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'+istr(lins)+' '
-     +istr(modecols[memmode])+' colors');
-  if readkey='' then;
-
-  textmode(3);
-end;
-
+           (* Writes the string s to 1. line of the mono. screen *)
 procedure wrmono(s:string);
 var x:word;
 begin
@@ -346,84 +550,695 @@ begin
     mem[$b000:x+x]:=ord(s[x]);
 end;
 
-procedure testscrollmode;
-var s:string;
-  r13,sclins,scpixs:word;
-  x0,y0:integer;
-  ch:char;
+           (* Ensures that xlow<=x<=xhigh *)
+procedure chkrange(var x:integer;xlow,xhigh:integer);
 begin
-  sclins:=lins;
-  scpixs:=pixels;
-  s:='Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'+istr(lins)+' '+istr(modecols[memmode])+' colors';
-  r13:=rdinx(crtc,$13);
-  if (r13<128) and ((bytes*lins*planes*5 div 2)<mm*longint(1024)) then
-  begin
-    wrinx(crtc,$13,r13*2);
-    bytes:=bytes*2;
-    pixels:=pixels*2;
-  end;
-  lins:=mm*longint(1024) div (bytes*planes);
+  if x<xlow then x:=xlow
+  else if x>xhigh then x:=xhigh;
+end;
 
-  for x0:=0 to (mm div 64)-1 do
-  begin
-    setbank(x0);
-    fillchar(mem[vseg:1],$ffff,0);
-    mem[vseg:0]:=0;
-  end;
+function testvmode:boolean;
+var
+  s:string;
+  r13,sclins,scpixs,scbytes:word;
+  x0,y0,x:integer;
+  ch:word;
+  stop,scrollable,nxt:boolean;
 
+begin
+  testvmode:=true;
+  s:='Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'+istr(lins)+' '+mmodenames[memmode];
   drawtestpattern(s);
-  x0:=0;
-  y0:=0;
-  repeat
-    setvstartxy(x0,y0);
-    wrmono(istr(x0)+':'+istr(y0)+'.');
-    ch:=readkey;
-    if ch=#0 then
-      case readkey of
-        #72:y0:=y0-16;
-        #75:x0:=x0-16;
-        #77:x0:=x0+16;
-        #80:y0:=y0+16;
-        #73:dec(y0);
-        #81:inc(y0);
+
+  if auto_test then af_rec.flag:=1;    {Mode Supported}
+
+  scrollable:=false;
+  ch:=getkey;
+  if (ch<>Ch_Esc) and not (chr(ch) in ['D','F','d','f']) then
+  begin
+    if memmode>=_pl4 then
+    begin
+      scrollable:=true;
+      { Scroll test  }
+      sclins:=lins;
+      scpixs:=pixels;
+      scbytes:=bytes;
+      r13:=rdinx(crtc,$13);
+      if (r13<128) and ((bytes*lins*planes*5 div 2)<mm*longint(1024))
+        and (r13>0) and ((bytes div r13) in [1,2,4,8,16])
+        and (memmode<>_cga1) and (memmode<>_cga2) then
+      begin            {Can we double the screen?}
+        wrinx(crtc,$13,r13*2);
+        bytes:=bytes*2;
+        pixels:=pixels*2;
       end;
-    if x0<0 then x0:=0;
-    if y0<0 then y0:=0;
-    if x0>pixels-scpixs then x0:=pixels-scpixs;
-    if y0>lins-sclins then y0:=lins-sclins;
+      case memmode of
+        _text,_text2,_text4:
+                lins:=32768 div bytes;
+        _cga1,_cga2:
+                lins:=16384 div bytes;
+           _pl1:lins:=mm*longint(256) div bytes;
+      else lins:=mm*longint(1024) div (bytes*planes);
+      end;
+      case memmode of
+   _cga1,_pl1,
+         _pl4:pixels:=bytes*8;
+        _cga2:pixels:=bytes*4;
+         _pk4:pixels:=bytes*2;
+          _p8:pixels:=bytes;
+    _p15,_p16:pixels:=bytes shr 1;
+         _p24:pixels:=bytes div 3;
+         _p32:pixels:=bytes shr 2;
+      end;
 
-  until (ch=#27) or (ch=#13);
+      Clearmemory;
 
-  textmode(3);
+      drawtestpattern(s);
+      x0:=0;
+      y0:=0;
+      stop:=false;
+
+      if auto_test then pushkey(ord('a'));
+      repeat
+        setvstart(x0,y0);
+        case getkey of
+            Ch_ArUp:y0:=y0-16;
+          Ch_ArLeft:x0:=x0-16;
+         Ch_ArRight:x0:=x0+16;
+          Ch_ArDown:y0:=y0+16;
+            Ch_PgUp:dec(y0);
+            Ch_PgDn:inc(y0);
+          ord('A'),ord('a'):begin
+                              x0:=0;y0:=0;x:=0;
+                              repeat
+                                setvstart(x0,y0);
+                                delay(100);
+                                nxt:=false;
+                                case x of
+                                  0:if x0+16<=pixels-scpixs then inc(x0,16)
+                                                           else nxt:=true;
+                                  1:if y0+16<=lins-sclins then inc(y0,16)
+                                                         else nxt:=true;
+                                  2:if x0>=16 then dec(x0,16) else nxt:=true;
+                                  3:if y0>=16 then dec(y0,16) else pushkey(ch_esc);
+                                end;
+                                if nxt then
+                                begin
+                                  inc(x);
+                                  delay(500);
+                                end;
+                                if peekkey=Ch_Esc then stop:=true;
+                              until stop;
+                              delay(500);
+                            end;
+          ord('D'),ord('d'),ord('F'),ord('f'),Ch_Esc,Ch_Cr:stop:=true;
+        end;
+        chkrange(x0,0,pixels-scpixs);
+        chkrange(y0,0,lins-sclins);
+
+      until stop;
+      setvstart(0,0);  {Reset start, some chipsets NEED this}
+      pixels:=scpixs;
+      lins:=sclins;
+      bytes:=scbytes;
+    end;
+    dac2comm;     {Reset DAC}
+    outp($3c6,0);
+    dac2pel;
+    textmode(3);
+
+    writeln('Values for mode '+hex4(curmode)+':');
+    writeln;
+    write('Pixels per scan line:',pixels:5);
+    if pixels<>calcpixels then write(' Calculated:',calcpixels:5);
+    writeln;
+    write('Lines in image:      ',lins:5);
+    if lins<>calclines then write(' Calculated:',calclines:5);
+    writeln;
+    write('Bytes per scanline:  ',bytes:5);
+    if bytes<>calcbytes then write(' Calculated:',calcbytes:5);
+    writeln;
+    write('Memory mode:         ',mmodenames[memmode]:5);
+    if memmode<>calcmmode then write(' Calculated:',mmodenames[calcmmode]:5);
+    writeln;
+    if memmode<_herc then writeln('Character cell:      ',charwid,'x',charhigh);
+    if vclk>0 then
+    begin
+      writeln;
+      write('Clocks: Pixel: ',vclk:7:3,' MHz, Line: ',hclk:7:3
+           ,' KHz, Frame: ',fclk:7:3,' Hz');
+      if ilace then write(' (i)');
+      writeln;
+    end;
+    if auto_test then
+    begin
+      pushkey(ch);
+      writeln;
+      write('Did the mode display properly (y/n): ');
+      if getYN then inc(af_rec.flag,2);
+      if scrollable then
+      begin
+        writeln;
+        write('Did the mode scroll properly (y/n): ');
+        if getYN then inc(af_rec.flag,8)
+                 else inc(af_rec.flag,4);
+      end;
+      af_cmt:=GetComment('any comments to the test');
+
+      af_rec.vseg    :=vseg;
+      af_rec.Cpixels :=calcpixels;
+      af_rec.Clins   :=calclines;
+      af_rec.Cbytes  :=calcbytes;
+      af_rec.CMmode  :=calcmmode;
+      af_rec.ChWidth :=charwid;
+      af_rec.ChHeight:=charhigh;
+      af_rec.Cvseg   :=calcvseg;
+      af_rec.ExtPixf :=Extpixfact;
+      af_rec.Extlinf :=Extlinfact;
+      af_rec.vclk    :=vclk;
+      af_rec.hclk    :=hclk;
+      af_rec.fclk    :=fclk;
+      af_rec.ilace   :=ilace;
+
+
+
+
+      pushkey(ch_cr);
+    end;
+
+
+
+    ch:=getkey;
+  end;
+  if (ch=ord('D')) or (ch=ord('d')) then ch:=dumpVGAregs;
+
+  case ch of
+     Ch_Esc:testvmode:=false;
+    ord('f'),ord('F'):
+            dumpVGAregfile;
+  end;
 end;
 
 
 
 
 
-
-
-procedure testvgamodes;           {Test extended modes}
-var m:word;
+procedure testcursor;           {Test HardWare Cursor}
+var m,x:word;
   md:integer;
-  c:char;
+
+procedure setXY(x0,y0:word);
+begin
+  SetHWcurpos(x0,y0);
+  SetHWcurcol(((x0*longint(256) div pixels)*256
+          +(y0*longint(256) div lins))*256+$ff,0);
+end;
 
 procedure tmode(m:word);
+const
+  CurMap:CursorType=
+     ($00f81f00,$00800130,$00800130,$00800100
+     ,$00f00f00,$008c3100,$00824100,$00818100
+     ,$80800101,$40800102,$20800104,$21800184
+     ,$11800188,$11800188,$11800188,$ffffffff
+     ,$ffffffff,$11800188,$11800188,$11800188
+     ,$21800184,$20800104,$40800102,$80800101
+     ,$00818100,$00824100,$008C3100,$00f00f00
+     ,$00800100,$00800100,$00800100,$00f81f00);
+
+var x,x0,y0:integer;
+  fgcol,bkcol:longint;
+  stop:boolean;
 begin
   memmode:=modetbl[m].memmode;
   pixels :=modetbl[m].xres;
   lins   :=modetbl[m].yres;
   bytes  :=modetbl[m].bytes;
-  if setmode(modetbl[m].md) then testvmode;
+  if setmode(modetbl[m].md) then
+  begin
+    drawtestpattern('Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'
+        +istr(lins)+' '+istr(modecols[memmode])+' colors');
+
+    SetHWcurmap(CurMap);
+
+    if auto_test then pushkey(ord('A'));
+    stop:=false;
+    x0:=100;y0:=150;  {Place it in the palette}
+    repeat
+      if x0<0 then x0:=0;
+      if y0<0 then y0:=0;
+      if x0+32>pixels then x0:=pixels-32;
+      if y0+32>lins then y0:=lins-32;
+
+      SetXY(x0,y0);
+      case getkey of
+          Ch_ArUp:dec(y0,17);
+        Ch_ArLeft:dec(x0,17);
+       Ch_ArRight:inc(x0,17);
+        Ch_ArDown:inc(y0,17);
+        ord('a'),ord('A'):
+                  begin
+                    x0:=0;
+                    repeat
+                      SetXY(x0,150);
+                      delay(200);
+                      inc(x0,17);
+                    until x0>pixels-32;
+                    x0:=0;
+                    repeat
+                      SetXY(200,x0);
+                      delay(200);
+                      inc(x0,17);
+                    until x0>lins-32;
+                    stop:=true;
+                  end;
+     Ch_Cr,Ch_Esc:stop:=true;
+      end;
+    until stop;
+    HWcuronoff(false);
+    if auto_test then
+    begin
+      repeat until keypressed;
+      dac2comm;     {Reset DAC}
+      outp($3c6,0);
+      dac2pel;
+      textmode(3);
+      write('Did the Hardware Cursor work properly (y/n) ?');
+      af_tst.Flag :=ord(getYN);
+      af_cmt:=getComment('any comments to the test');
+
+      af_tst.mode :=modetbl[m].md;
+      af_tst.Mmode:=modetbl[m].memmode;
+      AddAFbuf(af_tst,sizeof(af_tst));
+      AddAFbuf(af_cmt,length(af_cmt)+1);
+      WrAFbuf(3);
+    end;
+  end;
+end;
+
+begin
+  textmode($103);   {43/50 line text mode}
+  writeln('Hardware Cursor test.');
+  writeln;
+
+  if auto_test then
+  begin
+    delay(1000);
+    pushkey(ord('*'));
+  end
+  else begin
+    writeln('Modes:');
+    writeln;
+    for m:=1 to nomodes do
+      if modetbl[m].memmode>=_pl4 then
+      begin
+        writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+             +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+      end;
+    writeln;
+
+    writeln('  *  All modes');
+    writeln;
+  end;
+
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if ((x=0) or (x=m)) and (modetbl[m].memmode>=_pl4) then tmode(m);
+
+end;
+
+
+
+procedure testblit;           {Test BitBLT functions}
+var m,x:word;
+  md:integer;
+
+procedure tmode(m:word);
+var x,y,x0,y0:integer;
+  stop:boolean;
+begin
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+  if setmode(modetbl[m].md) then
+  begin
+    drawtestpattern('Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'
+        +istr(lins)+' '+istr(modecols[memmode])+' colors');
+
+
+    case memmode of
+ _pl4,_pk4:for x:=0 to 15 do
+             fillrect(200,100+x*8,128,8,x);
+       _p8:for x:=0 to 255 do
+             fillrect(200+(x and 15)*8,100+(x div 16)*8,8,8,x);
+   _p15,_p16,_p24:
+           for x:=0 to 63 do
+           begin
+             fillrect(200+(x and 15)*8,100+(x div 16)*8,8,8,rgb(x*4,0,0));
+             fillrect(200+(x and 15)*8,132+(x div 16)*8,8,8,rgb(0,x*4,0));
+             fillrect(200+(x and 15)*8,164+(x div 16)*8,8,8,rgb(0,0,x*4));
+             fillrect(200+(x and 15)*8,196+(x div 16)*8,8,8,rgb(x*4,x*4,x*4));
+           end;
+    end;
+
+    copyrect(30,50,500,45,128,200);
+    copyrect(200,100,332,105,128,128);
+
+    for y:=1 to 8 do
+    begin
+      y0:=y*10+250;
+      fillrect(100,y0,y,8,y);
+      x0:=101+y;
+      for x:=1 to 15 do
+      begin
+        fillrect(x0,y0,x,8,y);
+        x0:=x0+x+1;
+      end;
+      fillrect(x0,y0,9-y,8,y);
+      y0:=y0+10;
+    end;
+
+    if memmode<=_pl4 then   {specaal 16c test pattern}
+      for x:=0 to 19 do
+      begin
+        x0:=96+x*8;
+        for y:=0 to 8 do
+          setpix(x0,259+10*y,15);
+      end;
+
+    if auto_test then
+    begin
+      repeat until keypressed;
+      dac2comm;     {Reset DAC}
+      outp($3c6,0);
+      dac2pel;
+      textmode(3);
+      write('Did the BitBLT test work properly (y/n) ?');
+      af_tst.Flag :=ord(getYN);
+      af_cmt:=getComment('any comments to the test');
+
+      af_tst.mode :=modetbl[m].md;
+      af_tst.Mmode:=modetbl[m].memmode;
+      AddAFbuf(af_tst,sizeof(af_tst));
+      AddAFbuf(af_cmt,length(af_cmt)+1);
+      WrAFbuf(4);
+    end
+    else if getkey=0 then;
+  end;
 end;
 
 begin
   textmode($103);
+  writeln('Hardware BitBLT test.');
+  writeln;
+
+  if auto_test then
+  begin
+    delay(1000);
+    pushkey(ord('*'));
+  end
+  else begin
+    writeln('Modes:');
+    writeln;
+    for m:=1 to nomodes do
+      if modetbl[m].memmode>=_pl4 then
+      begin
+        writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+               +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+      end;
+    writeln;
+
+    writeln('  *  All modes');
+    writeln;
+  end;
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if ((x=0) or (x=m)) and (modetbl[m].memmode>=_pl4) then tmode(m);
+end;
+
+
+procedure testline;           {Test Line Draw functions}
+var x,m:word;
+  md:integer;
+
+procedure tmode(m:word);
+var x,x0,y0,w:integer;
+  stop:boolean;
+begin
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+  if setmode(modetbl[m].md) then
+  begin
+    drawtestpattern('Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'
+        +istr(lins)+' '+istr(modecols[memmode])+' colors');
+
+    x0:=pixels div 2;
+    y0:=lins div 2;
+    for x:=-10 to 9 do
+    begin
+      case memmode of
+   _pl4,_pk4:w:=(x+11) and 15;
+         _p8:w:=x+11;
+        _p15:w:=$4210+x*$3FF;
+        _p16:w:=$8410+x*$7FF;
+      end;
+      line(x0,y0,x0+x*15,y0-150 ,w);
+      line(x0,y0,x0+150 ,y0+x*15,w);
+      line(x0,y0,x0-x*15,y0+150 ,w);
+      line(x0,y0,x0-150 ,y0-x*15,w);
+    end;
+    if auto_test then
+    begin
+      repeat until keypressed;
+      dac2comm;     {Reset DAC}
+      outp($3c6,0);
+      dac2pel;
+      textmode(3);
+      write('Did the Line Draw test work properly (y/n): ?');
+      af_tst.Flag :=ord(getYN);
+      af_cmt:=getComment('any comments to the test');
+
+      af_tst.mode :=modetbl[m].md;
+      af_tst.Mmode:=modetbl[m].memmode;
+      AddAFbuf(af_tst,sizeof(af_tst));
+      AddAFbuf(af_cmt,length(af_cmt)+1);
+      WrAFbuf(5);
+    end
+    else if getkey=0 then;
+  end;
+end;
+
+begin
+  textmode($103);
+  writeln('Hardware Line Draw test.');
+  writeln;
+
+  if auto_test then
+  begin
+    delay(1000);
+    pushkey(ord('*'));
+  end
+  else begin
+    writeln('Modes:');
+    writeln;
+    for m:=1 to nomodes do
+      if modetbl[m].memmode>=_pl4 then
+      begin
+        writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+               +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+      end;
+    writeln;
+
+    writeln('  *  All modes');
+    writeln;
+  end;
+
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if ((x=0) or (x=m)) and (modetbl[m].memmode>=_pl4) then tmode(m);
+end;
+
+
+procedure testRWbank;           {Test R/W bank functions}
+var x,m:word;
+  md:integer;
+
+procedure tmode(m:word);
+var x,wid:integer;
+  src,dst:longint;
+begin
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+  if setmode(modetbl[m].md) then
+  begin
+    drawtestpattern('Mode: '+hex4(curmode)+'h: '+istr(pixels)+'x'
+        +istr(lins)+' '+istr(modecols[memmode])+' colors');
+
+    src:=50*bytes+10;
+    dst:=300*bytes+10;
+    if memmode=_pl4 then
+    begin
+      wid:=50;
+      modinx(GRC,5,3,1);   {Use mode Write mode 1}
+    end else wid:=300;
+    for x:=1 to 200 do
+    begin
+      setbank(dst shr 16);
+      setrbank(src shr 16);
+      move(mem[$a000:src and $ffff],mem[$a000:dst and $ffff],wid);
+      inc(src,bytes);
+      inc(dst,bytes);
+    end;
+    if auto_test then
+    begin
+      repeat until keypressed;
+      dac2comm;     {Reset DAC}
+      outp($3c6,0);
+      dac2pel;
+      textmode(3);
+      write('Did the Read/Write bank test work properly (y/n) ?');
+      af_tst.Flag :=ord(getYN);
+      af_cmt:=getComment('any comments to the test');
+
+      af_tst.mode :=modetbl[m].md;
+      af_tst.Mmode:=modetbl[m].memmode;
+      AddAFbuf(af_tst,sizeof(af_tst));
+      AddAFbuf(af_cmt,length(af_cmt)+1);
+      WrAFbuf(6);
+    end
+    else if getkey=0 then;
+  end;
+end;
+
+begin
+  textmode($103);
+  writeln('Seperate Read/Write bank test.');
+
+  if auto_test then
+  begin
+    delay(1000);
+    pushkey(ord('*'));
+  end
+  else begin
+    writeln('Modes:');
+    writeln;
+    for m:=1 to nomodes do
+      if modetbl[m].memmode>=_pl4 then
+      begin
+        writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+               +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+      end;
+    writeln;
+
+    writeln('  *  All modes');
+    writeln;
+  end;
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if ((x=0) or (x=m)) and (modetbl[m].memmode>=_pl4) then tmode(m);
+end;
+
+procedure testbits;           {Test register bits}
+var m,pt,ix,msk:word;
+  md,x:integer;
+  s:string;
+
+function tmode(m:word):boolean;
+const
+  mask:array[0..7] of byte=(1,2,4,8,16,32,64,128);
+var
+  stop:boolean;
+  x:word;
+begin
+  tmode:=true;
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+  if setmode(modetbl[m].md) then
+  begin
+    case memmode of
+      _text,_text2,_text4:
+              lins:=32768 div bytes;
+      _cga1,_cga2:
+              lins:=16384 div bytes;
+         _pl1:lins:=mm*longint(256) div bytes;
+    else lins:=mm*longint(1024) div (bytes*planes);
+    end;
+
+    Clearmemory;
+
+    drawtestpattern(s);
+    stop:=false;
+    repeat
+      wrtext(10,180,'Reg '+hex4(pt)+'h index '+hex2(ix)+'h bit '+chr(msk+48));
+      x:=rdinx(pt,ix);
+      wrinx(pt,ix,x xor mask[msk]);
+      delay(500);
+      wrinx(pt,ix,x);
+      delay(500);
+
+      if keypressed then
+        case getkey of
+           ord('-'):if msk>0 then dec(msk)
+                    else begin
+                      msk:=7;
+                      dec(ix);
+                    end;
+           ord('+'):begin
+                      inc(msk);
+                      if msk>7 then
+                      begin
+                        msk:=0;
+                        inc(ix);
+                      end;
+                    end;
+           ord('*'):begin
+                      inc(ix);
+                      msk:=0;
+                    end;
+             Ch_Esc:stop:=true;
+        end;
+    until stop;
+    dac2comm;     {Reset DAC}
+    outp($3c6,0);
+    dac2pel;
+    textmode(3);
+  end;
+end;
+
+begin
+  textmode($103);
+  writeln('Test register bits.');
+  writeln;
+  write('Base register (hex): ');
+  readln(s);
+  pt:=dehex(s);
+  write('Start Index (hex 0-FFh): ');
+  readln(s);
+  ix:=dehex(s);
+  write('Start Bit (0-7): ');
+  readln(s);
+  msk:=ord(s[1]) and 7;
+  writeln;
+  writeln('Testing register bits, starting with '+hex4(pt)+'h index '+hex2(ix)+'h bit '+chr(msk+48)+'.');
+  writeln;
+  writeln('  +  Steps up to the next bit (and possibly next index)');
+  writeln('  -  Steps back to the last bit');
+  writeln('  *  Steps to the next index, bit 0');
+  writeln(' Esc Terminates the test');
+  writeln;
+
   writeln('Modes:');
   writeln;
   for m:=1 to nomodes do
   begin
-    writeln('  '+chr(m+64)+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+    writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
            +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
   end;
   writeln;
@@ -431,79 +1246,214 @@ begin
   writeln('  *  All modes');
 
   writeln;
-  c:=upcase(readkey);
+  x:=getmenkey;
   for m:=1 to nomodes do
-    if (c='*') or (c=chr(m+64)) then tmode(m);
+    if (x=0) or (x=m) then
+      if not tmode(m) then x:=-1;  {stop}
+
+end;
+
+
+procedure testdac8;           {Test 8bit DAC mode}
+var m,pt,ix,msk:word;
+  md,x:integer;
+  s:string;
+
+procedure setpal(inx,red,grn,blu:word);
+begin
+  outp($3C8,inx);
+  outp($3C9,red);
+  outp($3C9,grn);
+  outp($3C9,blu);
+end;
+
+function tmode(m:word):boolean;
+var
+  stop,dac8,olddac:boolean;
+  x,y:word;
+begin
+  tmode:=true;
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+  if setmode(modetbl[m].md) then
+  begin
+    drawtestpattern('Test 6/8 bit DAC');
+    for y:=0 to 127 do
+      for x:=0 to 255 do
+        setpix(x+30,y+100,(x shr 2)+(y and $60)*2);
+
+    stop:=false;
+    dac8:=false;
+    olddac:=not dac8;
+    repeat
+      if dac8<>olddac then
+      begin
+        if dac8 then setdac8 else setdac6;
+
+        for x:=0 to 63 do setpal(x,x*4,0,0);
+        for x:=0 to 63 do setpal(x+$40,0,x*4,0);
+        for x:=0 to 63 do setpal(x+$80,0,0,x*4);
+        for x:=0 to 63 do setpal(x+$C0,x*4,x*4,x*4);
+        olddac:=dac8;
+      end;
+      if keypressed then
+        case getkey of
+           ord('6'):dac8:=false;
+           ord('8'):dac8:=true;
+       Ch_Esc,Ch_Cr:stop:=true;
+        end;
+    until stop;
+    setdac6;
+    dac2comm;     {Reset DAC}
+    outp($3c6,0);
+    dac2pel;
+    textmode(3);
+  end;
+end;
+
+begin
+  textmode($103);
+  writeln('Test 8bit DAC mode (256 of 16m colors).');
+  writeln;
+  writeln('Press 8 to switch to 8bit DAC, 6 to switch to 6bit DAC');
+  writeln;
+
+  writeln('Modes:');
+  writeln;
+  for m:=1 to nomodes do
+    if modetbl[m].memmode=_p8 then
+      writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+           +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+  writeln;
+
+  writeln('  *  All modes');
+
+  writeln;
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if (x=0) or (x=m) then
+      if not tmode(m) then x:=-1;  {stop}
+
+end;
+
+
+procedure testvgamodes;           {Test extended modes}
+var m:word;
+  md,x:integer;
+
+function tmode(m:word):boolean;
+begin
+  tmode:=true;
+  memmode:=modetbl[m].memmode;
+  pixels :=modetbl[m].xres;
+  lins   :=modetbl[m].yres;
+  bytes  :=modetbl[m].bytes;
+
+  if auto_test then
+  begin
+    fillchar(af_rec,sizeof(af_rec),0);
+    af_rec.mode  :=modetbl[m].md;
+    af_rec.Mmode :=memmode;
+    af_rec.pixels:=pixels;
+    af_rec.lins  :=lins;
+    af_rec.bytes :=bytes;
+  end;
+
+
+  if setmode(modetbl[m].md) then tmode:=testvmode;
+
+  if auto_test then
+  begin
+    af_rec.crtc  :=crtc;
+    AddAFBuf(af_rec,sizeof(af_rec));
+    AddAFbuf(af_cmt,length(af_cmt)+1);
+    inc(af_pos,FormatRgs(af_buf[af_pos]));
+
+    WrAFbuf(2);
+  end;
+end;
+
+begin
+  textmode($103);
+  writeln('Test extended VGA modes.');
+  writeln('Modes:');
+  writeln;
+  for m:=1 to nomodes do
+  begin
+    writeln('  '+menuchars[m]+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
+           +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
+  end;
+  writeln;
+
+  writeln('  *  All modes');
+  if auto_test then pushkey(ord('*'));
+  writeln;
+  x:=getmenkey;
+  for m:=1 to nomodes do
+    if (x=0) or (x=m) then
+      if not tmode(m) then x:=-1;  {stop}
 
 end;
 
 procedure teststdvgamodes;          {Test standard VGA modes}
 var m:word;
-  md:integer;
-  c:char;
+  md,x:integer;
 
-procedure tmode(m:word);
+function tmode(m:word):boolean;
 begin
   memmode:=stdmodetbl[m].memmode;
   pixels :=stdmodetbl[m].xres;
   lins   :=stdmodetbl[m].yres;
   bytes  :=stdmodetbl[m].bytes;
-  if setmode(stdmodetbl[m].md) then testvmode;
+
+  if auto_test then
+  begin
+    fillchar(af_rec,sizeof(af_rec),0);
+    af_rec.mode  :=stdmodetbl[m].md;
+    af_rec.Mmode :=memmode;
+    af_rec.pixels:=pixels;
+    af_rec.lins  :=lins;
+    af_rec.bytes :=bytes;
+  end;
+
+
+  if setmode(stdmodetbl[m].md) then tmode:=testvmode;
+
+  if auto_test then
+  begin
+    af_rec.crtc  :=crtc;
+    AddAFBuf(af_rec,sizeof(af_rec));
+    AddAFbuf(af_cmt,length(af_cmt)+1);
+    inc(af_pos,FormatRgs(af_buf[af_pos]));
+    WrAFbuf(2);
+  end;
 end;
 
 begin
   textmode($103);
+  writeln('Standard VGA mode test.');
+  writeln;
   writeln('Modes:');
   writeln;
   for m:=1 to novgamodes do
   begin
-    writeln('  '+chr(m+64)+' '+hex4(stdmodetbl[m].md)+'h '+istr(stdmodetbl[m].xres)
+    writeln('  '+menuchars[m]+' '+hex4(stdmodetbl[m].md)+'h '+istr(stdmodetbl[m].xres)
            +'x'+istr(stdmodetbl[m].yres)+' '+mdtxt[stdmodetbl[m].memmode]);
   end;
   writeln;
   writeln('  *  All modes');
 
   writeln;
-  c:=upcase(readkey);
+  if auto_test then pushkey(ord('*'));
+  x:=getmenkey;
   for m:=1 to novgamodes do
-    if (c='*') or (c=chr(m+64)) then tmode(m);
+    if (x=0) or (x=m) then
+      if not tmode(m) then x:=-1;
 
 end;
 
-
-procedure testscrollmodes;           {Test scrolling}
-var
-  m:word;
-  c:char;
-
-procedure tmode(m:word);
-begin
-  memmode:=modetbl[m].memmode;
-  pixels :=modetbl[m].xres;
-  lins   :=modetbl[m].yres;
-  bytes  :=modetbl[m].bytes;
-  if setmode(modetbl[m].md) then testscrollmode;
-end;
-
-begin
-  textmode($103);
-  writeln('Modes:');
-  writeln;
-  for m:=1 to nomodes do
-  begin
-    writeln('  '+chr(m+64)+' '+hex4(modetbl[m].md)+'h '+istr(modetbl[m].xres)
-           +'x'+istr(modetbl[m].yres)+' '+mdtxt[modetbl[m].memmode]);
-  end;
-  writeln;
-
-  writeln('  *  All modes');
-
-  writeln;
-  c:=upcase(readkey);
-  for m:=1 to nomodes do
-    if (c='*') or (c=chr(m+64)) then tmode(m);
-
-end;
 
 procedure searchformodes;      {Run through all possible modes
                                 and try to id any new ones}
@@ -514,7 +1464,7 @@ type
            x:array[0..255] of byte;
          end;
 var
-  md,m,bseg,hig,wid,x,y,oldbytes,wordadr:word;
+  md,m,hig,wid,x,y,oldbytes,wordadr:word;
   c:char;
   ofil:text;
   attregs:array[0..31] of byte;
@@ -522,6 +1472,7 @@ var
   stdregs:array[$3c0..$3df] of byte;
   l:longint;
   s:string;
+  stop:boolean;
 
 
 procedure dumprg(base:word;var rg:regblk);
@@ -529,8 +1480,11 @@ var six,ix:word;
 begin
   rg.base:=base;
   six:=inp(base);
+  outp(base,0);
+  ix:=inp(base) xor 255;
   outp(base,255);
-  ix:=inp(base);
+  ix:=ix and inp(base);
+
   if ix>127 then rg.nbr:=255
   else if ix>63 then rg.nbr:=127
   else if ix>31 then rg.nbr:=63
@@ -542,399 +1496,145 @@ begin
   outp(base,six);
 end;
 
-procedure wrregs(var f:text;var rg:regblk);
-var x:word;
-begin
-  write(f,hex4(rg.base)+':');
-  for x:=0 to rg.nbr do
-  begin
-    if (x mod 25=0) and (x>0) then
-      write(f,'('+hex2(x)+'):');
-
-    write(f,' '+hex2(rg.x[x]));
-  end;
-  writeln(f);
-end;
-
-procedure dumpregs(var f:text);
-var x:word;
-begin
-  writeln(f,'Mode: '+hex2(md)+'h Pixels: '+istr(pixels)+' lines: '+istr(lins)
-       +' bytes: '+istr(bytes)+' colors: '+istr(modecols[memmode]));
-  writeln(f);
-  for x:=$3C0 to $3CF do write(' '+hex2(stdregs[x]));
-  writeln(f);
-  for x:=$3D0 to $3DF do write(' '+hex2(stdregs[x]));
-  writeln(f);
-  write(f,'03C0:');
-  for x:=0 to 31 do
-  begin
-    if x=25 then
-    begin
-      writeln(f);
-      write(f,'(19):');
-    end;
-    write(f,' '+hex2(attregs[x]));
-  end;
-  writeln(f);
-  wrregs(f,seqregs);
-  wrregs(f,grcregs);
-  wrregs(f,crtcregs);
-  if xxregs.base<>0 then wrregs(f,xxregs);
-  writeln(f);
-end;
 
 
-
-procedure plotchar(x,y,ch:word);
-begin
-  mem[bseg:(y*wid+x) shl 1]:=ch;
-end;
-
-procedure plotchat(x,y,ch,at:word);
-begin
-  memw[bseg:(y*wid+x) shl 1]:=at shl 8+ch;
-end;
-
-procedure plotstr(x,y:word;s:string);
-var z:word;
-begin
-  for z:=1 to length(s) do
-    plotchar(x+z-1,y,ord(s[z]));
-end;
 
 begin
-  for md:=$14 to $7f do
+  md:=$14;
+  stop:=false;
+  while (md<$80) and not stop do
   begin
     textmode(3);
     gotoxy(10,10);
     write('Testing mode: '+hex2(md));
     delay(500);
-    vio(md);
-    if mem[0:$449]=md then
+    if setmode(md) then
     begin
-      for x:=$3C2 to $3DF do stdregs[x]:=inp(x);
-      x:=inp($3DA);
-      stdregs[$3C0]:=inp($3C0);
-      for x:=0 to 31 do attregs[x]:=rdinx($3C0,x);
-      x:=rdinx($3C0,$30);
-      dumprg(crtc,crtcregs);
-      dumprg($3C4,seqregs);
-      dumprg($3CE,grcregs);
-      case chip of
-        __chips451,__chips452,__chips453:dumprg(crtc+2,xxregs);
-      else xxregs.base:=0;
-      end;
-      m:=grcregs.x[6];
-      case (m shr 2) and 3 of
-      0,1:bseg:=$a000;
-        2:bseg:=$b000;
-        3:bseg:=$b800;
-      end;
-      if odd(m) then
-      begin  {graf mode}
-        lins:=crtcregs.x[$12]+1;
-        x:=crtcregs.x[7];
-        if (x and 2)<>0 then inc(lins,256);
-        if (x and 64)<>0 then inc(lins,512);
-        pixels:=(crtcregs.x[1]+1)*8;
+      pixels :=calcpixels;
+      lins   :=calclines;
+      bytes  :=calcbytes;
+      vseg   :=calcvseg;
+      memmode:=calcmmode;
+      repeat
+        oldbytes:=bytes;
 
-        wid:=crtcregs.x[$13];
-        wordadr:=2;
-        if (crtcregs.x[$14] and 64)<>0 then wordadr:=8
-        else if (crtcregs.x[$17] and 64)=0 then wordadr:=4;
-        case chip of
-         __p2000:if (grcregs.x[$13] and 64)<>0 then
-                 begin
-                   wordadr:=wordadr shr 1;
-                   if (grcregs.x[$21] and 32)<>0 then inc(wid,256);
-                 end;
-      __cirrus54:begin
-                   if (crtcregs.x[$1B] and 16)<>0 then inc(wid,256);
-                   if (crtcregs.x[$1A] and 1)<>0 then lins:=lins*2;
-                 end;
-        __tseng4:if (crtcregs.x[$3f] and 128)<>0 then inc(wid,256);
-        end;
-        x:=seqregs.x[4];
-        if (x and 8)<>0 then  {256 color}
+        if setmode(md) then
         begin
-          memmode:=_p256;
-          if dactype>_dac8 then
-          begin
-            dactocomm;
-            x:=inp($3c6);
-
-            if x>127 then memmode:=_p32k;
-            case dactype of
-              _dac16:if (x and 64)<>0 then memmode:=_p64k;
-          (*  _dacss24:if x=$8e then
-                     begin
-                       memmode:=_p16m;
-                       pixels:=pixels*3;
-                     end;  *)
-             _dacatt:case (x and $60) of
-                       $40:memmode:=_p64k;
-                       $60:memmode:=_p16m;
-                     end;
-           _dacadac1:case x of
-                       $E1:memmode:=_p64k;
-                       $E5:memmode:=_p16m;
-                       $F0:memmode:=_p32k;
-                     end;
-            end;
-            dactopel;
-          end;
-        end
-       { else if (x and 4)<>0 then
-        begin
-          memmode:=_pl4;
-          bytes:=wid;
-        end }
-        else memmode:=_pl16;
-        bytes:=wid*wordadr;
-        case memmode of               {Adjust for HiColor}
-    _p32k,_p64k:pixels:=pixels div 2;
-          _p16m:pixels:=pixels div 3;
+          drawtestpattern('Mode: '+hex2(md)+' ('+istr(pixels)+'x'+istr(lins)+' '
+                   +mmodenames[memmode]+') '+istr(bytes)+' bytes.');
         end;
-        if (pixels>800) and (pixels>=2*lins) then  {adjust for interlace}
-          lins:=lins*2;
 
-        repeat
-          oldbytes:=bytes;
-
-          if setmode(md) then
-          begin
-            case colbits[memmode] of
-              15:s:='32K';
-              16:s:='64K';
-              24:s:='16M';
-            else s:=istr(modecols[memmode]);
-            end;
-            drawtestpattern('Mode: '+hex2(md)+' ('+istr(pixels)+'x'+istr(lins)+' '
-                     +s+' col) '+istr(bytes)+' bytes.');
-          end;
-
-          case readkey of
-           #0:begin
-                c:=readkey;
-                case c of
-                  #73:bytes:=bytes shl 1;
-                  #81:bytes:=bytes shr 1;
-                  #72:inc(bytes);
-                  #80:dec(bytes);
-                end;
-              end;
-      'd','D':begin
-                bytes:=oldbytes;
-                textmode($103);
-                dumpregs(output);
-                if readkey='' then;
-              end;
-      'f','F':begin
-                bytes:=oldbytes;
-                assign(ofil,'register.vga');
-                {$i-}
-                append(ofil);
-                {$i+}
-                if ioresult<>0 then rewrite(ofil);
-                dumpregs(ofil);
-                close(ofil);
-              end;
-          end;
-        until bytes=oldbytes;
-      end
-      else begin {text mode}
-        for x:=0 to 16383 do
-          memw[bseg:x+x]:=$720;
-        wid:=memw[0:$44a];
-        for x:=0 to wid-1 do
-        begin
-          plotchar(x,0,(x mod 10)+ord('0'));
-          if (x mod 10)=0 then
-            plotchar(x,1,((x div 10) mod 10)+ord('0'));
+        case getkey of
+          Ch_PgUp:bytes:=bytes shl 1;
+          Ch_PgDn:bytes:=bytes shr 1;
+          Ch_ArUp:inc(bytes);
+        Ch_ArDown:dec(bytes);
+      ord('d'),ord('D'):
+                  begin
+                    bytes:=oldbytes;
+                    x:=dumpVGAregs;
+                  end;
+      ord('f'),ord('F'):
+                  begin
+                    bytes:=oldbytes;
+                    dumpVGAregfile;
+                  end;
+           Ch_Esc:stop:=true;
         end;
-        hig:=mem[0:$484];
-        for x:=0 to hig do
-        begin
-          plotchar(0,x,(x mod 10)+ord('0'));
-          if (x mod 10)=0 then
-            plotchar(1,x,((x div 10) mod 10)+ord('0'));
-        end;
-        plotstr(5,5,'Testing mode '+hex2(md)+'h: '+istr(wid)+'x'+istr(hig+1));
-        for x:=0 to 255 do
-          plotchat(x and 15+10,x shr 4+7,65,x);
-        if readkey='' then;
-        x:=x;
-      end;
+      until bytes=oldbytes;
     end;
+    inc(md);
   end;
   textmode(3);
 end;
 
-
-
-procedure testvesamodes;          {Test VESA modes}
-type
-  modelist=array[1..100] of word;
-var
-  vesahrec:record
-             sign:longint;
-             version:word;
-             oemname:^char;
-             capabilities:longint;
-             list:^modelist;
-             xx:array[1..256] of byte;  {Might be filled by AX=4F00h}
-           end;
-  mode,x,y,novesamodes:word;
-  oldchip:chips;
-  c:char;
-
-procedure tmode(m:word);
-begin
-  vesamodeinfo(m);
-  pixels :=vesarec.width;
-  lins   :=vesarec.height;
-  bytes  :=vesarec.bytes;
-  if setmode(m) then testvmode;
-end;
-
-
-begin
-  oldchip:=chip;
-  chip:=__vesa;
-  rp.es:=seg(vesahrec);
-  rp.di:=ofs(vesahrec);
-  vesahrec.sign:=$41534556;
-  vio($4f00);
-  mode:=1;
-
-     {S3 VESA driver can return wrong segment if run with QEMM}
-  IF {(oldchip=__s3) and} (seg(vesahrec.list^)=$e000) then
-    vesahrec.list:=ptr($c000,ofs(vesahrec.list^));
-  textmode($103);
-  writeln('Modes:');
-  writeln;
-  while vesahrec.list^[mode]<>$ffff do
-  begin
-    vesamodeinfo(vesahrec.list^[mode]);
-    writeln('  '+chr(mode+64)+' '+hex4(vesahrec.list^[mode])+'h '
-           +istr(vesarec.width)+'x'+istr(vesarec.height)+' '
-           +mdtxt[memmode]);
-
-    inc(mode);
-  end;
-  novesamodes:=mode;
-  writeln;
-  writeln('  *  All modes');
-
-  writeln;
-  c:=upcase(readkey);
-  for mode:=1 to novesamodes do
-    if (c='*') or (c=chr(mode+64)) then
-      tmode(vesahrec.list^[mode]);
-  chip:=oldchip;
-  textmode(3);
-  clrscr;
-end;
 
 
 var
   stop:boolean;
 
+function ljust(s:string;lnn:word):string;
+begin
+  ljust:=copy(s+'          ',1,lnn);
+end;
 
-procedure loadmodes;              {Load extended modes for this chip}
+function rjust(s:string;lnn:word):string;
+begin
+  if length(s)<lnn then s:=copy('          ',1,lnn-length(s))+s;
+  rjust:=s;
+end;
+
+function chkptr(w:word):word;
+begin
+  if memw[0:w+2]=biosseg then chkptr:=memw[0:w]
+                         else chkptr:=0;
+end;
+
+function fntadr(BH:word):word;
+begin
+  rp.bh:=BH;
+  vio($1130);
+  if rp.es=biosseg then fntadr:=rp.bp
+  else fntadr:=0;
+end;
+
+procedure wrAFff;
 var
-  t:text;
-  s,pat:string;
-  md,x,xres,yres,err,mreq,byt:word;
-
-
-function unhex(s:string):word;
-var x:word;
+  rhdr:_ATff;
+  x,y,z,v:word;
 begin
-  for x:=1 to 4 do
-    if s[x]>'9' then
-      s[x]:=chr(ord(s[x]) and $5f-7);
-  unhex:=(((word(ord(s[1])-48) shl 4
-         +  word(ord(s[2])-48)) shl 4
-         +  word(ord(s[3])-48)) shl 4
-         +  word(ord(s[4])-48));
-end;
-
-function mmode(s:string):mmods;
-var x:mmods;
-begin
-  for x:=_text to _p16m do
-    if s=mmodenames[x] then mmode:=x;
-
-end;
-
-begin
-  nomodes:=0;
-  pat:='['+header[chip]+']';
-  assign(t,'whatvga.lst');
-  reset(t);
-  s:=' ';
-  while (not eof(t)) and (s<>pat) do readln(t,s);
-  s:=' ';
-  readln(t,s);
-  while (s[1]<>'[') and (s<>'') do
+  if af_fail and (biosseg<>0) then
   begin
-    md:=unhex(copy(s,1,4));
-    memmode:=mmode(copy(s,6,4));
-    val(copy(s,11,5),xres,err);
-    val(copy(s,17,4),yres,err);
-    case memmode of
-      _text,_text4:bytes:=xres*2;
- _pl2e, _herc,_cga2,_pl2:bytes:=xres shr 3;
-    _pk4,_pl4,_cga4:bytes:=xres shr 4;
-       _pl16,_pk16:bytes:=xres shr 1;
-             _p256:bytes:=xres;
-       _p32k,_p64k:bytes:=xres*2;
-             _p16m:bytes:=xres*3;
-    else
-    end;
-    case dactype of
-        _dac8:if memmode>_p256 then memmode:=_text;
-       _dac15:if memmode>_p32k then memmode:=_text;
-       _dac16:if memmode=_p16m then memmode:=_text;
-     _dacss24:if memmode=_p64k then memmode:=_text;
-    end;
-    val(copy(s,22,5),byt,err);
-    if (err=0) and (byt>0) then bytes:=byt;
-    if err<>0 then mreq:=(longint(bytes)*yres+1023) div 1024;
-    case memmode of
-      _pl16:bytes:=xres shr 3;
-    end;
-    if (memmode>_text4) and (mm>=mreq) then
+    fillchar(rhdr,sizeof(rhdr),0);
+    rhdr.base :=biosseg;
+    rhdr.size :=mem[biosseg:2];
+    rhdr.int10:=chkptr($40);
+    rhdr.int6D:=chkptr($1B4);
+    rhdr.m4A8 :=chkptr($4A8);
+    rhdr.fnt14  :=fntadr(2);
+    rhdr.fnt8l  :=fntadr(3);
+    rhdr.fnt8h  :=fntadr(4);
+    rhdr.fnt14x9:=fntadr(5);
+    rhdr.fnt16  :=fntadr(6);
+    rhdr.fnt16x9:=fntadr(7);
+    AddAFbuf(rhdr,sizeof(rhdr));
+    WrAFbuf(255);
+    y:=0;z:=0;
+    for x:=0 to (rhdr.size*512-1) do
     begin
-      inc(nomodes);
-      modetbl[nomodes].xres:=xres;
-      modetbl[nomodes].yres:=yres;
-      modetbl[nomodes].md:=md;
-      modetbl[nomodes].bytes:=bytes;
-      modetbl[nomodes].memmode:=memmode;
+      v:=mem[biosseg:x];
+      af_buf[z]:=v-y;
+      y:=v;
+      inc(z);
+      if z>=2000 then
+      begin
+        blockwrite(af_fil,af_buf,z);
+        z:=0;
+      end;
     end;
-    readln(t,s);
+    blockwrite(af_fil,af_buf,z);
   end;
-  close(t);
 end;
+
 
 
 var
   chp,force_chip:chips;
-  s:string;
-  force_mm:word;
-  err,x:word;
+  s,fea:string;
+  iteration,err,x,sel:word;
 
+  devs:array[1..10] of string[80];
 
 begin
+  {$ifdef ver70}
+    test8086:=1;    {force 286}
+  {$endif}
   fillchar(dotest,sizeof(dotest),ord(true));   {allow test for all chips}
   force_mm:=0;
   force_chip:=__none;
   for x:=1 to paramcount do
   begin
-    s:=paramstr(x);
+    s:=upstr(paramstr(x));
     case s[1] of
      '-':begin
            s:=upstr(strip(copy(s,2,255)));
@@ -953,6 +1653,8 @@ begin
              end;
          end;
      '=':val(copy(s,2,255),force_mm,err);
+     '/':if (s='/DEBUG') or (s='/D') then debug:=true
+         else if (s='/A') or (s='/AUTO') then auto_test:=true;
     end;
   end;
 
@@ -961,47 +1663,148 @@ begin
   if force_chip<>__none then chip:=force_chip;
   if force_mm<>0 then mm:=force_mm;
 
-  loadmodes;
+
+  for x:=1 to vids do
+  begin
+    SelectVideo(x);
+    fea:='';
+    if (features and ft_cursor)>0 then fea:=' C';
+    if (features and ft_blit  )>0 then fea:=fea+' B';
+    if (features and ft_line  )>0 then fea:=fea+' L';
+    if (features and ft_rwbank)>0 then fea:=fea+' R';
+    devs[x]:='  '+istr(x)+'  '+ljust(chipnam[chip],9)
+               +rjust(istr(mm),8)+ljust(fea,8)+'  '+vid[x].name;
+  end;
 
 
-
-  stop:=false;
+  iteration:=0;
   repeat
-    textmode(3);
-    writeln('WHATVGA v. 1.0    23/jan/93    Copyright 1991,92,93  Finn Thoegersen');
-    writeln;
+    stop:=false;
+    if vids<>1 then
+    begin
+      textmode(3);
+      writeln(copyright);
+      writeln;
+      writeln('Multiple Video Interfaces or Adapters found!!');
+      writeln('Please select the one to test:');
+      writeln('       Chip:    Memory:  Feat:  Name:');
+      for x:=1 to vids do writeln(devs[x]);
+      writeln;
+      writeln(' 0  Stop');
+      writeln;
+      sel:=getkey-ord('0');
+      if sel=0 then stop:=true;
+    end
+    else sel:=1;
+    if (sel>0) and (sel<=vids) then SelectVideo(sel);
 
-    write('Video system: ',video,' with '+istr(mm)+' Kbytes.');
-    if _crt<>'' then write(' Monitor: '+_crt);
-    writeln;
-    if secondary<>'' then writeln('Secondary display: '+secondary);
-    Write('Chipset: '+header[chip]);
-    if name<>'' then write('  Name: '+name);
-    writeln;
-    if extra<>'' then writeln(extra);
-    writeln('Dac: '+dacname);
+    while not stop do
+    begin
+      dac2comm;     {Reset DAC}
+      outp($3c6,0);
+      dac2pel;
+      textmode(3);
+      writeln(copyright);
+      writeln;
 
-    writeln;
-    writeln('     1  Test Standard VGA modes');
-    writeln('     2  Test Extended VGA modes');
-    writeln('     3  Test scroll function');
-    writeln('     4  Search for video modes');
-    if vesa<>0 then
-      writeln('     5  Test VESA modes.');
-    writeln('     9  Stop');
-    writeln;
-    case readkey of
-      '1':teststdvgamodes;
-      '2':testvgamodes;
-      '3':testscrollmodes;
-      '4':searchformodes;
-      '5':if vesa<>0 then testvesamodes;
+      write('Video system: ',chipnam[chip],' with '+istr(mm)+' Kbytes');
+      if SubVers<>0 then write(' Version: '+hex4(SubVers));
+      writeln;
+      if name<>'' then writeln('Name: '+name);
+      writeln('Dac: '+dacname);
 
-      '9':stop:=true;
+      if features<>0 then
+      begin
+        write('Special features:');
+        if (features and ft_cursor)<>0 then write(' Cursor');
+        if (features and ft_blit)<>0 then write(' BitBlt');
+        if (features and ft_line)<>0 then write(' Line');
+        if (features and ft_rwbank)<>0 then write(' RW-bank');
+        writeln;
+      end;
+
+      writeln;
+      if (chip<>__vesa) and (chip<>__XBE) then
+        writeln('     1  Test Standard VGA modes');
+      writeln('     2  Test Extended modes');
+      if (chip<>__vesa) and (chip<>__XBE) then
+        writeln('     3  Search for video modes');
+      if (features and ft_cursor)<>0 then
+        writeln('     5  HardWare Cursor test');
+      if (features and ft_blit)<>0 then
+        writeln('     6  HardWare BitBLT test');
+      if (features and ft_line)<>0 then
+        writeln('     7  Line Draw test');
+      if (features and ft_rwbank)<>0 then
+        writeln('     8  R/W bank test');
+      writeln;
+      writeln('     0  Stop');
+      writeln;
+
+      if auto_test then
+      begin
+        inc(iteration);
+        pushkey(Ch_Cr);  {No Operation, just step on}
+        case iteration of
+          1:begin
+              InitAFfile(sel);
+              for x:=1 to vids do
+              begin
+                AddAFbuf(vid[x],sizeof(vid[1]));
+                WrAFbuf(1);
+              end;
+              if (chip<>__vesa) and (chip<>__XBE) then pushkey(ord('1'));
+            end;
+          2:pushkey(ord('2'));
+          3:if (features and ft_cursor)<>0 then pushkey(ord('5'));
+          4:if (features and ft_blit)<>0 then pushkey(ord('6'));
+          5:if (features and ft_line)<>0 then pushkey(ord('7'));
+          6:if (features and ft_rwbank)<>0 then pushkey(ord('8'));
+          7:pushkey(ch_esc);
+
+        end;
+      end;
+
+
+
+
+      case getkey of
+             ord('1'):teststdvgamodes;
+             ord('2'):testvgamodes;
+             ord('3'):searchformodes;
+             ord('5'):testcursor;
+             ord('6'):testblit;
+             ord('7'):testline;
+             ord('8'):testrwbank;
+    ord('a'),ord('A'):auto_test:=true;
+    ord('b'),ord('B'):testbits;
+    ord('d'),ord('D'):testdac8;
+             ord('0'):stop:=true;
+      Ch_Esc:begin
+               stop:=true;
+               sel:=0;
+             end;
+      end;
     end;
+    if vids<=1 then sel:=0;
+  until sel=0;
 
-  until stop;
-
-
+  dac2comm;     {Reset DAC}
+  outp($3c6,0);
+  dac2pel;
   vio(3);
-end.
+
+  if auto_test then
+  begin
+    wrAFff;
+    close(af_fil);
+    writeln;
+    writeln('The test results are in the file: ',af_filename);
+    writeln;
+    writeln('For e-mail, modem etc the test file should be compressed');
+    writeln('(ZIP, ARJ...) savings of >40% are not uncommon.');
+    writeln;
+    writeln('For Email transport, remember that the test file is BINARY.');
+
+  end;
+end.
